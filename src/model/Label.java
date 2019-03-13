@@ -17,14 +17,22 @@ public class Label {
 	// If it is dominated by another route
 	private boolean isDominated;
 	
-	// The nodes visited from the origin the current node
-	private boolean[] path;
+	// Number of unreachable nodes
+	private int nbUnreachableNodes;
 	
+	// List of unreachable nodes from the current Label
+	private int[] unreachableNodes;
+	
+	// Number of visited nodes
+	private int nbVisitedNodes;
+	
+	// The nodes visited from the origin the current node
+	private int[] visitationVector;
+			
 	public boolean compare(Label label) {
 		
 		if(	this.cost <= label.getCost() &&
-			this.resources <= label.getResources() &&
-			this.path != label.getPath()	)
+			this.resources <= label.getResources()	)
 		{
 			return true;
 		}
@@ -72,11 +80,58 @@ public class Label {
 		this.isDominated = isDominated;
 	}
 
-	public boolean[] getPath() {
-		return path;
+	public int[] getVisitationVector() {
+		return visitationVector;
 	}
 
-	public void setPath(boolean[] path) {
-		this.path = path;
+	public void setVisitationVector(int[] visitationVector) {
+		this.visitationVector = visitationVector;
+	}
+
+	public int[] getUnreachableNodes() {
+		return unreachableNodes;
+	}
+
+	public void setUnreachableNodes(int[] unreachableNodes) {
+		this.unreachableNodes = unreachableNodes;
+	}
+
+	public int getNbUnreachableNodes() {
+		return nbUnreachableNodes;
+	}
+
+	public void setNbUnreachableNodes(int nbNodes) {
+		this.nbUnreachableNodes = nbNodes;
+	}
+
+	public int getNbVisitedNodes() {
+		return nbVisitedNodes;
+	}
+
+	public void setNbVisitedNodes(int nbVisitedNodes) {
+		this.nbVisitedNodes = nbVisitedNodes;
+	}
+
+	public boolean dominates(Label label) {
+		boolean dominance = true;
+		
+		if(	this.cost > label.getCost() || 
+			this.nbVisitedNodes > label.getNbVisitedNodes() ||
+			this.resources > label.getResources() ) {
+			dominance = false;
+		}
+		
+		if(dominance) {
+			for(int n = 0; n < this.visitationVector.length; n++) {
+				if(this.visitationVector[n] > label.getVisitationVector()[n] ) {
+					dominance = false;
+					break;
+				}
+			}
+		}
+		
+		label.setDominated(dominance);
+		
+		return dominance;
 	}
 }

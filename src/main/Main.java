@@ -18,7 +18,6 @@ public class Main {
 		reader.read();
 		instance.buildCosts();
 		
-		System.out.println(instance.getCost()[4][2]);
 //		Solver solver = new Solver(instance);		
 //		solver.solveVRP();
 	}
