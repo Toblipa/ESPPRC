@@ -115,7 +115,6 @@ public class Solver {
 		
 		// Matrix a[i][k] equals to the times
 		// customer i is visited in route r
-//		int[][] a  = new int[this.instance.getNodes().length][feasibleRoutes.length];
 		
 		for (int i = 0; i < this.instance.getNodes().length; i++) {
 			IloLinearNumExpr expression = cplex.linearNumExpr();
@@ -132,11 +131,11 @@ public class Solver {
 		// Matrix a[i][k] equals to
 		// 1 if route k visits customer i
 		// 0 if not
-//		int[][] a  = new int[this.instance.getNodes().length][feasibleRoutes.length];
+
 		int stop = this.instance.getNodes().length;
 		if( this.instance.isDuplicateOrigin() ) { stop -=1; }
 		
-		for (int i = 1; i < stop; i++) {			
+		for (int i = 1; i < stop; i++) {
 			IloLinearNumExpr expression = cplex.linearNumExpr();
 			for (int k = 0; k < feasibleRoutes.length; k++) {
 				expression.addTerm(feasibleRoutes[k].getVisitationVector()[i], x[k]);
