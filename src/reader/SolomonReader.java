@@ -38,6 +38,61 @@ public class SolomonReader {
 		}
 	}
 
+	private void readInstace(String line, int counter) {
+
+		line = line.replace("\r", "");
+		line = line.trim();
+		String[] tokens = line.split(" +");
+
+		if (counter == 5) {
+			this.readVehicle(tokens);
+		}
+		else if (counter == 10) {
+			// origin node
+			if(this.file.contains("_100")){
+				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 102:101]);
+			}
+			else if(this.file.contains("_50")) {
+				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 52:51]);
+			}
+			else if(this.file.contains("_25")) {
+				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 27:26]);
+			}
+			else if(this.file.contains("_5")){
+				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 7:6]);
+			}
+			
+			this.readOrigin(tokens);
+		}
+		else if (counter > 10 && tokens.length == 7){
+			// customers
+			this.readCustomer(tokens);
+		}
+	}
+	
+	private void readOrigin(String[] tokens) {
+		// The origin node
+		this.readCustomer(tokens);
+		
+		if( this.instance.isDuplicateOrigin() ) {
+			// We add a duplicate of the depot at the end
+			int depotId = this.instance.getNodes().length - 1;
+			
+			Customer depot = new Customer( Double.parseDouble(tokens[1]), Double.parseDouble(tokens[2]) );
+			
+			depot.setCustomerId( depotId );
+			depot.setDemand( Integer.parseInt(tokens[3]) );
+			depot.setStart( Double.parseDouble(tokens[4]) );
+			depot.setEnd( Double.parseDouble(tokens[5]) );
+			depot.setServiceTime( Double.parseDouble(tokens[6]) );
+			depot.setDepot(true);
+			
+			// Add the node to the instance
+			this.instance.getNodes()[depotId] = depot;
+		}
+		
+	}
+	
 	private void readCustomer(String[] tokens) {
 		Customer customer = new Customer( Double.parseDouble(tokens[1]), Double.parseDouble(tokens[2]) );
 		
@@ -56,34 +111,6 @@ public class SolomonReader {
 		this.instance.setCapacity( Double.parseDouble(tokens[1]) );
 	}
 
-	private void readInstace(String line, int counter) {
-
-		line = line.replace("\r", "");
-		line = line.trim();
-		String[] tokens = line.split(" +");
-
-		if (counter == 5) {
-			readVehicle(tokens);
-		}
-		else if (counter == 10) {
-			// origin node
-			if(this.file.contains("_25")) {
-				this.instance.setNodes(new Customer[26]);
-			}
-			else if(this.file.contains("_50")) {
-				this.instance.setNodes(new Customer[51]);
-			}
-			else {
-				this.instance.setNodes(new Customer[101]);
-			}
-			readCustomer(tokens);
-		}
-		else if (counter > 10 && tokens.length == 7){
-			// customers
-			readCustomer(tokens);
-		}
-	}
-	
 	public EspprcInstance getInstance() {
 		return instance;
 	}

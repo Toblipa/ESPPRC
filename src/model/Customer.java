@@ -12,6 +12,9 @@ public class Customer extends AbstractNode{
     private double end;
     
     private double serviceTime;
+    
+	// To know if it is the depot
+	private boolean isDepot = false;
 
 	public Customer(double x, double y) {
 		super(x, y);
@@ -58,7 +61,15 @@ public class Customer extends AbstractNode{
 	}
 
 	
-    /**
+    public boolean isDepot() {
+		return isDepot;
+	}
+
+	public void setDepot(boolean isDepot) {
+		this.isDepot = isDepot;
+	}
+
+	/**
      * Calcul de la distance euclidienne entre deux points (this et p).
      * @param p le point avec lequel on cherche la distance
      * @return la distance euclidienne entre les points, infini si p est null.
