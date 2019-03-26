@@ -15,7 +15,7 @@ public class Customer extends AbstractNode{
     
 	// To know if it is the depot
 	private boolean isDepot = false;
-
+	
 	public Customer(double x, double y) {
 		super(x, y);
 	}

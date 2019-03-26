@@ -1,5 +1,6 @@
 package model;
 
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,10 +13,8 @@ public class Label {
 	private Label previousLabel;
 	
 	// The resources used until now
-	Map<String, Double> resource;
-	
-	// one resource
-	private double resources;
+//	Map<String, Double> resources;
+	double[] resources;
 	
 	// The total cost of the route
 	private double cost;
@@ -27,21 +26,21 @@ public class Label {
 	private int nbUnreachableNodes;
 	
 	// List of unreachable nodes from the current Label
-	private int[] unreachableNodes;
+	private BitSet unreachableNodes;
 	
 	// Number of visited nodes
 	private int nbVisitedNodes;
 	
 	// The nodes visited from the origin the current node
 	private int[] visitationVector;
-	
+		
 	public Label() {
-		this.resource = new HashMap<String, Double>();
+		this.resources = new double[2];
 	}
 	
 	public Label(Customer node) {
 		this.current = node;
-		this.resource = new HashMap<String, Double>();
+		this.resources = new double[2];
 	}
 
 	public Customer getCurrent() {
@@ -60,20 +59,12 @@ public class Label {
 		this.previousLabel = previousLabel;
 	}
 
-	public Map<String, Double> getResource() {
-		return resource;
-	}
-
-	public void setResource(Map<String, Double> resource) {
-		this.resource = resource;
-	}
-
-	public double getResources() {
+	public double[] getResources() {
 		return resources;
 	}
 
-	public void setResources(double resources) {
-		this.resources = resources;
+	public void setResources(double[] resource) {
+		this.resources = resource;
 	}
 
 	public double getCost() {
@@ -100,11 +91,11 @@ public class Label {
 		this.visitationVector = visitationVector;
 	}
 
-	public int[] getUnreachableNodes() {
+	public BitSet getUnreachableNodes() {
 		return unreachableNodes;
 	}
 
-	public void setUnreachableNodes(int[] unreachableNodes) {
+	public void setUnreachableNodes(BitSet unreachableNodes) {
 		this.unreachableNodes = unreachableNodes;
 	}
 
@@ -124,57 +115,60 @@ public class Label {
 		this.nbVisitedNodes = nbVisitedNodes;
 	}
 	
-	public void addResource(String name) {
-		this.resource.put(name, 0.0);
+//	public void addResource(String name) {
+//		this.resources.put(name, 0.0);
+//	}
+	
+	public void addToResource(int index, double value) {
+		this.resources[index] += value;
 	}
 	
-	public void setResource(String name, Double value) {
-		this.resource.put(name, value);
+	public void setResource(int index, double value) {
+		this.resources[index] = value;
 	}
 	
-	public Double getResource(String name) {
-		return this.resource.get(name);
+	public Double getResource(int index) {
+		return this.resources[index];
 	}
-	
-	@Deprecated
-	public boolean dominates(Label label) {
-		boolean dominance = true;
+	/*
+	 * For time measure purposes
+	 */
+	class DominanceResult{
+		private boolean equals;
+		private long timeElapsed;
 		
-		if(	this.cost > label.getCost() ||
-			this.resources > label.getResources() ||
-			this.nbUnreachableNodes > label.getNbUnreachableNodes() ) {
-			dominance = false;
+		public DominanceResult (boolean result, long timeElapsed) {
+			this.equals = result;
+			this.timeElapsed = timeElapsed;
 		}
-		
-		if( dominance ) {
-			for(int n = 0; n < this.unreachableNodes.length; n++) {
-				if(this.unreachableNodes[n] > label.getUnreachableNodes()[n] ) {
-					dominance = false;
-					break;
-				}
-			}
+
+		public boolean getEquals() {
+			return equals;
 		}
-		
-		label.setDominated(dominance);
-		
-		return dominance;
+
+		public long getTimeElapsed() {
+			return timeElapsed;
+		}
 	}
-	
 	/**
+	 * Returns true if the labels are equal, false if not.
 	 * 
 	 * @param label
 	 * @return
 	 */
-	public boolean checkDominance(Label label) {
-//		System.out.println("Comparing labels:");
-//		System.out.println(this);
-//		System.out.println(this.stringifyVisitationVector());
-//		System.out.println(label);
-//		System.out.println(label.stringifyVisitationVector());
+	public DominanceResult checkDominance(Label label) {
+		
+		// We check if the dominance rules can be used
+		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {
+			return new DominanceResult(false, 0);
+		}
+		
+		if( this.previousLabel.equals(label.getPreviousLabel()) ){
+			return new DominanceResult (true, 0);
+		}
 		
 		boolean thisDominance = false;
 		boolean anotherDominance = false;
-
 		
 		int costDiff = new Double(this.cost).compareTo(label.getCost());
 		
@@ -182,8 +176,19 @@ public class Label {
 		int resourceDiff = 0;
 		boolean resourceThisDominance = true;
 		boolean resourceAnotherDominance = true;
-		for (Map.Entry<String, Double> l : this.resource.entrySet()) {
-			resourceDiff = l.getValue().compareTo( label.getResource().get(l.getKey()) );
+		
+//		for (Map.Entry<String, Double> l : this.resources.entrySet()) {
+//			resourceDiff = l.getValue().compareTo( label.getResource(l.getKey()) );
+//			
+//			if(resourceThisDominance && resourceDiff > 0) {
+//				resourceThisDominance = false;
+//			}
+//			else if(resourceAnotherDominance && resourceDiff < 0) {
+//				resourceAnotherDominance = false;
+//			}
+//		}
+		for (int r = 0; r < this.resources.length; r++) {
+			resourceDiff = new Double(this.resources[r]).compareTo( label.getResource(r) );
 			
 			if(resourceThisDominance && resourceDiff > 0) {
 				resourceThisDominance = false;
@@ -193,11 +198,11 @@ public class Label {
 			}
 		}
 		
-//		int resourcesDiff = new Double(this.resources).compareTo(label.getResources());
-//		resourceThisDominance = resourcesDiff <= 0;
-//		resourceAnotherDominance = resourcesDiff >= 0;
-		
 		int nodesDiff = new Integer(this.nbUnreachableNodes).compareTo(label.getNbUnreachableNodes());
+		
+		// Only comparing time resource
+//		resourceThisDominance = this.getResource("Time").compareTo( label.getResource("Time") ) <= 0;
+//		resourceAnotherDominance =  this.getResource("Time").compareTo( label.getResource("Time") ) >= 0;
 		
 		if( costDiff <= 0 && resourceThisDominance && nodesDiff <= 0) {
 			thisDominance = true;
@@ -212,31 +217,68 @@ public class Label {
 			anotherDominance = false;
 		}
 		
-		if( thisDominance || anotherDominance ) {
-			for(int n = 0; n < this.unreachableNodes.length; n++) {
-				if(this.unreachableNodes[n] != label.getUnreachableNodes()[n] ) {
-					thisDominance = thisDominance && this.unreachableNodes[n] <= label.getUnreachableNodes()[n];
-					anotherDominance = anotherDominance && this.unreachableNodes[n] >= label.getUnreachableNodes()[n];
-					
-					if(!thisDominance && !anotherDominance) {
-						break;
-					}
-				}
-			}
+		long startReadingThrough = System.nanoTime();		
+		if( thisDominance ) {
+			BitSet compareSet = (BitSet) label.getUnreachableNodes().clone();
+			compareSet.and(this.unreachableNodes);
+			
+			thisDominance = thisDominance && compareSet.cardinality() == this.nbUnreachableNodes;
 		}
+		else if( anotherDominance ) {
+			BitSet compareSet = (BitSet) this.unreachableNodes.clone();
+			compareSet.and(label.getUnreachableNodes());
+			
+			anotherDominance = anotherDominance && compareSet.cardinality() == label.getNbUnreachableNodes();
+		}
+		long endReadingThrough = System.nanoTime();
+		
+//		if( thisDominance || anotherDominance ) {
+//			for(int n = 0; n < this.unreachableNodes.length; n++) {
+//				if(this.unreachableNodes[n] != label.getUnreachableNodes()[n] ) {
+//					thisDominance = thisDominance && (this.unreachableNodes[n] <= label.getUnreachableNodes()[n]);
+//					anotherDominance = anotherDominance && (this.unreachableNodes[n] >= label.getUnreachableNodes()[n]);
+//					
+//					if(!thisDominance && !anotherDominance) {
+//						break;
+//					}
+//				}
+//			}
+//		}
 		
 		label.setDominated( thisDominance );
 		this.isDominated = anotherDominance;
 		
-//		if(thisDominance) {
-//			System.out.println("Result: "+this+" dominates "+label);
-//		}
-//		if(anotherDominance) {
-//			System.out.println("Result: "+label+" dominates "+this);
-//		}
-//		System.out.println("");
+		return new DominanceResult(false, endReadingThrough - startReadingThrough);
+//		return false;
+	}
+	
+	public boolean dominates(Label label) {
+		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {
+			return false;
+		}
 		
-		return thisDominance;
+		if(this.cost > label.getCost() || this.nbUnreachableNodes > label.getNbUnreachableNodes()) {
+			return false;
+		}
+		
+		for (int r = 0; r < this.resources.length; r++) {
+			if(this.resources[r] > label.getResource(r)) {
+				return false;
+			}
+		}
+		
+		long startReadingThrough = System.nanoTime();
+		
+		BitSet compareSet = (BitSet) label.getUnreachableNodes().clone();
+		compareSet.and(this.unreachableNodes);
+		
+		boolean result = compareSet.cardinality() == this.nbUnreachableNodes;
+		
+		long endReadingThrough = System.nanoTime();
+
+		label.setDominated(result);
+		
+		return result;
 	}
 
 	@Override
@@ -244,9 +286,8 @@ public class Label {
 		if(this.current==null) {
 			return "Empty Label";
 		}
-		String dominated = this.isDominated?"Dominated":"Non Dominated";
-		return dominated + " Label [at " + current.getCustomerId() + "," +
-				" resorces: " + this.resources + "," +
+		String dominated = this.isDominated?"Dominated ":"Non Dominated ";
+		return dominated + "Label [at " + current.getCustomerId() + "," +
 				" cost: " + this.cost + "]";
 	}
 	
@@ -269,13 +310,23 @@ public class Label {
 		return out;
 	}
 	
-	public String stringifyUnreachableNodes() {
-		String out = "[ ";
-		for(int index = 0; index < this.unreachableNodes.length; index++) {
-			out += this.unreachableNodes[index]+" ";
-		}
-		out += "]";
-		return out;
-	}
+//	public String stringifyUnreachableNodes() {
+//		String out = "[ ";
+//		for(int index = 0; index < this.unreachableNodes.; index++) {
+//			out += this.unreachableNodes[index]+" ";
+//		}
+//		out += "]";
+//		return out;
+//	}
 	
+//	public String stringifyResources() {
+//		String out = "{";
+//		for (String name: this.resources.keySet()){
+//			String key = name.toString();
+//			String value = this.resources.get(name).toString();
+//			out += (key + ": " + value+", ");
+//		}
+//		out += "}";
+//		return out;
+//	}
 }

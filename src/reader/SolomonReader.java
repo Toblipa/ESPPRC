@@ -58,6 +58,12 @@ public class SolomonReader {
 			else if(this.file.contains("_25")) {
 				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 27:26]);
 			}
+			else if(this.file.contains("_15")) {
+				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 17:16]);
+			}
+			else if(this.file.contains("_10")) {
+				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 12:11]);
+			}
 			else if(this.file.contains("_5")){
 				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 7:6]);
 			}
