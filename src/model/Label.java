@@ -163,17 +163,17 @@ public class Label {
 			return new DominanceResult(false, 0);
 		}
 		
-		if( this.previousLabel.equals(label.getPreviousLabel()) ){
+		if( this.previousLabel == label.getPreviousLabel() ){
 			return new DominanceResult (true, 0);
 		}
 		
 		boolean thisDominance = false;
 		boolean anotherDominance = false;
 		
-		int costDiff = new Double(this.cost).compareTo(label.getCost());
+		double costDiff = this.cost - label.getCost();
 		
 		// We compare every resource
-		int resourceDiff = 0;
+		double resourceDiff = 0;
 		boolean resourceThisDominance = true;
 		boolean resourceAnotherDominance = true;
 		
@@ -188,7 +188,7 @@ public class Label {
 //			}
 //		}
 		for (int r = 0; r < this.resources.length; r++) {
-			resourceDiff = new Double(this.resources[r]).compareTo( label.getResource(r) );
+			resourceDiff = this.resources[r] - label.getResource(r);
 			
 			if(resourceThisDominance && resourceDiff > 0) {
 				resourceThisDominance = false;
@@ -198,7 +198,7 @@ public class Label {
 			}
 		}
 		
-		int nodesDiff = new Integer(this.nbUnreachableNodes).compareTo(label.getNbUnreachableNodes());
+		int nodesDiff = this.nbUnreachableNodes - label.getNbUnreachableNodes();
 		
 		// Only comparing time resource
 //		resourceThisDominance = this.getResource("Time").compareTo( label.getResource("Time") ) <= 0;
@@ -213,8 +213,7 @@ public class Label {
 		}
 		
 		if(thisDominance && anotherDominance) {
-			thisDominance = false;
-			anotherDominance = false;
+			return new DominanceResult(false, 0);
 		}
 		
 		long startReadingThrough = System.nanoTime();		
@@ -223,12 +222,16 @@ public class Label {
 			compareSet.and(this.unreachableNodes);
 			
 			thisDominance = thisDominance && compareSet.cardinality() == this.nbUnreachableNodes;
+			
+			label.setDominated( thisDominance );
 		}
 		else if( anotherDominance ) {
 			BitSet compareSet = (BitSet) this.unreachableNodes.clone();
 			compareSet.and(label.getUnreachableNodes());
 			
 			anotherDominance = anotherDominance && compareSet.cardinality() == label.getNbUnreachableNodes();
+			
+			this.isDominated = anotherDominance;
 		}
 		long endReadingThrough = System.nanoTime();
 		
@@ -244,10 +247,7 @@ public class Label {
 //				}
 //			}
 //		}
-		
-		label.setDominated( thisDominance );
-		this.isDominated = anotherDominance;
-		
+				
 		return new DominanceResult(false, endReadingThrough - startReadingThrough);
 //		return false;
 	}

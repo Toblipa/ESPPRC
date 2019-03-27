@@ -30,11 +30,14 @@ public class Main {
 			reader.read();
 			
 			// Preprocessing nodes
-			instance.buildCosts();
+			instance.buildArcs();
 			instance.buildSuccessors();
 			
 			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
-
+			
+	        // Introduction
+	        System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
+	        
 			// Solving
 			cplexResults[i] = solveESPPRC(instance);
 			
@@ -97,9 +100,6 @@ public class Main {
 	 * @return
 	 */
 	public static ESPPRCResult labelingAlgorithm(EspprcInstance instance) {
-		
-        // Introduction
-        System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
         
         // We start the label correcting algorithm
         System.out.println("START: Generating feasible routes");
@@ -178,7 +178,7 @@ public class Main {
 	
 	@SuppressWarnings("unused")
 	private static String[] getCInstances(int nbClients) {
-		String[] instances = new String[17];
+		String[] instances = new String[9];
 		
 		instances[0] = "instances/solomon_"+nbClients+"/C101.txt";
 		instances[1] = "instances/solomon_"+nbClients+"/C102.txt";
@@ -190,21 +190,21 @@ public class Main {
 		instances[7] = "instances/solomon_"+nbClients+"/C108.txt";
 		instances[8] = "instances/solomon_"+nbClients+"/C109.txt";
 		
-		instances[9] = "instances/solomon_"+nbClients+"/C201.txt";
-		instances[10] = "instances/solomon_"+nbClients+"/C202.txt";
-		instances[11] = "instances/solomon_"+nbClients+"/C203.txt";
-		instances[12] = "instances/solomon_"+nbClients+"/C204.txt";
-		instances[13] = "instances/solomon_"+nbClients+"/C205.txt";
-		instances[14] = "instances/solomon_"+nbClients+"/C206.txt";
-		instances[15] = "instances/solomon_"+nbClients+"/C207.txt";
-		instances[16] = "instances/solomon_"+nbClients+"/C208.txt";
+//		instances[9] = "instances/solomon_"+nbClients+"/C201.txt";
+//		instances[10] = "instances/solomon_"+nbClients+"/C202.txt";
+//		instances[11] = "instances/solomon_"+nbClients+"/C203.txt";
+//		instances[12] = "instances/solomon_"+nbClients+"/C204.txt";
+//		instances[13] = "instances/solomon_"+nbClients+"/C205.txt";
+//		instances[14] = "instances/solomon_"+nbClients+"/C206.txt";
+//		instances[15] = "instances/solomon_"+nbClients+"/C207.txt";
+//		instances[16] = "instances/solomon_"+nbClients+"/C208.txt";
 		
 		return instances;
 	}
 	
 	@SuppressWarnings("unused")
 	private static String[] getRInstances(int nbClients) {
-		String[] instances = new String[23];
+		String[] instances = new String[12];
 		
 		instances[0] = "instances/solomon_"+nbClients+"/R101.txt";
 		instances[1] = "instances/solomon_"+nbClients+"/R102.txt";
@@ -219,24 +219,24 @@ public class Main {
 		instances[10] = "instances/solomon_"+nbClients+"/R111.txt";
 		instances[11] = "instances/solomon_"+nbClients+"/R112.txt";
 		
-		instances[12] = "instances/solomon_"+nbClients+"/R201.txt";
-		instances[13] = "instances/solomon_"+nbClients+"/R202.txt";
-		instances[14] = "instances/solomon_"+nbClients+"/R203.txt";
-		instances[15] = "instances/solomon_"+nbClients+"/R204.txt";
-		instances[16] = "instances/solomon_"+nbClients+"/R205.txt";
-		instances[17] = "instances/solomon_"+nbClients+"/R206.txt";
-		instances[18] = "instances/solomon_"+nbClients+"/R207.txt";
-		instances[19] = "instances/solomon_"+nbClients+"/R208.txt";
-		instances[20] = "instances/solomon_"+nbClients+"/R209.txt";
-		instances[21] = "instances/solomon_"+nbClients+"/R210.txt";
-		instances[22] = "instances/solomon_"+nbClients+"/R211.txt";
+//		instances[12] = "instances/solomon_"+nbClients+"/R201.txt";
+//		instances[13] = "instances/solomon_"+nbClients+"/R202.txt";
+//		instances[14] = "instances/solomon_"+nbClients+"/R203.txt";
+//		instances[15] = "instances/solomon_"+nbClients+"/R204.txt";
+//		instances[16] = "instances/solomon_"+nbClients+"/R205.txt";
+//		instances[17] = "instances/solomon_"+nbClients+"/R206.txt";
+//		instances[18] = "instances/solomon_"+nbClients+"/R207.txt";
+//		instances[19] = "instances/solomon_"+nbClients+"/R208.txt";
+//		instances[20] = "instances/solomon_"+nbClients+"/R209.txt";
+//		instances[21] = "instances/solomon_"+nbClients+"/R210.txt";
+//		instances[22] = "instances/solomon_"+nbClients+"/R211.txt";
 
 		return instances;
 	}
 	
 	@SuppressWarnings("unused")
 	private static String[] getRCInstances(int nbClients) {
-		String[] instances = new String[16];
+		String[] instances = new String[8];
 		
 		instances[0] = "instances/solomon_"+nbClients+"/RC101.txt";
 		instances[1] = "instances/solomon_"+nbClients+"/RC102.txt";
@@ -246,14 +246,15 @@ public class Main {
 		instances[5] = "instances/solomon_"+nbClients+"/RC106.txt";
 		instances[6] = "instances/solomon_"+nbClients+"/RC107.txt";
 		instances[7] = "instances/solomon_"+nbClients+"/RC108.txt";
-		instances[8] = "instances/solomon_"+nbClients+"/RC201.txt";
-		instances[9] = "instances/solomon_"+nbClients+"/RC202.txt";
-		instances[10] = "instances/solomon_"+nbClients+"/RC203.txt";
-		instances[11] = "instances/solomon_"+nbClients+"/RC204.txt";
-		instances[12] = "instances/solomon_"+nbClients+"/RC205.txt";
-		instances[13] = "instances/solomon_"+nbClients+"/RC206.txt";
-		instances[14] = "instances/solomon_"+nbClients+"/RC207.txt";
-		instances[15] = "instances/solomon_"+nbClients+"/RC208.txt";
+		
+//		instances[8] = "instances/solomon_"+nbClients+"/RC201.txt";
+//		instances[9] = "instances/solomon_"+nbClients+"/RC202.txt";
+//		instances[10] = "instances/solomon_"+nbClients+"/RC203.txt";
+//		instances[11] = "instances/solomon_"+nbClients+"/RC204.txt";
+//		instances[12] = "instances/solomon_"+nbClients+"/RC205.txt";
+//		instances[13] = "instances/solomon_"+nbClients+"/RC206.txt";
+//		instances[14] = "instances/solomon_"+nbClients+"/RC207.txt";
+//		instances[15] = "instances/solomon_"+nbClients+"/RC208.txt";
 
 		return instances;
 	}

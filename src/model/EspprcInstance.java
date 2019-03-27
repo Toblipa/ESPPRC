@@ -17,6 +17,9 @@ public class EspprcInstance {
 	// the cost to go from node_i to node_j
 	private double[][] cost;
 	
+	// the time to go from node_i to node_j
+	private double[][] distance;
+	
 	// the quantity of vehicles
 	private int vehicles;
 	
@@ -37,21 +40,25 @@ public class EspprcInstance {
 	 * Funtion to stock the arc costs in a matrix
 	 * It ramdomly generates negative costs for the arcs
 	 */
-	public void buildCosts() {
-		int max = 30;
+	public void buildArcs() {
+		int max = 20;
 		int min = 0;
 		Random rand = new Random(0);
 		
 		// We introduce a cost factor to model time costs
 		double costFactor = 1;
+		double timeFactor = 1;
         
 		int nbNodes = this.getNodes().length;
         this.cost = new double[nbNodes][nbNodes];
+        this.distance = new double[nbNodes][nbNodes];
         for(int i=0; i < nbNodes; i++) {
             for(int j=0; j < nbNodes; j++) {
             	if(i != j && i != nbNodes-1) {
+            		double euclidianDistance = this.getNodes()[i].distance(this.getNodes()[j]);
             		int randomInt = rand.nextInt(max - min + 1) + min;
-                	this.cost[i][j] = (this.getNodes()[i].distance(this.getNodes()[j]) * costFactor) - randomInt;
+                	this.cost[i][j] = ( euclidianDistance * costFactor) - randomInt;
+                    this.distance[i][j] = euclidianDistance * timeFactor;
             	}
             	else {
             		this.cost[i][j] = 0;
@@ -81,7 +88,7 @@ public class EspprcInstance {
 				
 				// We compute the time needed to reach the node which corresponds to
 				// the minimal time to complete the service in the current node + the time needed to get to the next node
-				double timeToReach = node.getStart() + node.getServiceTime() + this.cost[node.getCustomerId()][nextNode.getCustomerId()];
+				double timeToReach = node.getStart() + node.getServiceTime() + this.distance[node.getCustomerId()][nextNode.getCustomerId()];
 				
 				// Check if it is possible
 				if( i != n && nextNode.getEnd() >= timeToReach ) {
@@ -121,6 +128,14 @@ public class EspprcInstance {
 
 	public void setCost(double[][] cost) {
 		this.cost = cost;
+	}
+
+	public double[][] getDistance() {
+		return distance;
+	}
+
+	public void setDistance(double[][] distance) {
+		this.distance = distance;
 	}
 
 	public double getCapacity() {
@@ -550,6 +565,7 @@ public class EspprcInstance {
 		
 		Customer currentNode = currentLabel.getCurrent();
 		double arcCost = this.cost[currentNode.getCustomerId()][currentSuccessor.getCustomerId()];
+		double arcDistance = this.distance[currentNode.getCustomerId()][currentSuccessor.getCustomerId()];
 		
 		// We create a new label on the node successor
 		Label extendedLabel = new Label( currentSuccessor );
@@ -561,13 +577,13 @@ public class EspprcInstance {
 		extendedLabel.setCost( currentLabel.getCost() + arcCost );
 		
 		// We add the resources of the label, considering we cannot visit the customer before the start time
-		if( currentSuccessor.getStart() > currentLabel.getResource(0) + currentNode.getServiceTime() + arcCost ) {
+		if( currentSuccessor.getStart() > currentLabel.getResource(0) + currentNode.getServiceTime() + arcDistance ) {
 			extendedLabel.setResource( 0, currentSuccessor.getStart() );
 		}
 		else {
-			extendedLabel.setResource( 0, currentLabel.getResource(0) + currentNode.getServiceTime() + arcCost );
+			extendedLabel.setResource( 0, currentLabel.getResource(0) + currentNode.getServiceTime() + arcDistance );
 		}
-		
+		// Add demand resource
 		extendedLabel.setResource( 1, currentLabel.getResource(1) + currentSuccessor.getDemand());
 		
 		// We update the visitation vector
@@ -587,7 +603,7 @@ public class EspprcInstance {
 				continue;
 			}
 			
-			double timeToReach = extendedLabel.getResource(0) + currentSuccessor.getServiceTime() + this.cost[currentSuccessor.getCustomerId()][i];
+			double timeToReach = extendedLabel.getResource(0) + currentSuccessor.getServiceTime() + this.distance[currentSuccessor.getCustomerId()][i];
 			if ( currentUnreachableNodes.get(i) ||
 					( this.nodes[i].getEnd() < timeToReach ||
 							this.capacity < extendedLabel.getResource(1) + this.nodes[i].getDemand()) ) {
