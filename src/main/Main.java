@@ -20,7 +20,7 @@ public class Main {
 		int nbClients = 25;
 		int useCplex = 0;
 		int timeLimit = 600;
-		String instanceType = "C";
+		String instanceType = "R";
 		String directory = "./instances/solomon_"+nbClients+"/";
 		
 		// Reading arguments

@@ -200,11 +200,11 @@ public class EspprcInstance {
 		//Stack<Customer> E = new Stack<Customer>();
 		ArrayList<Customer> E = new ArrayList<Customer>();
 		E.add(this.getNodes()[0]);
-		int itNumber = 0;
+//		int itNumber = 0;
 		
 		do {
 			// Debug puposes
-			this.displayE(E, itNumber);
+//			this.displayE(E, itNumber);
 			
 			// Exploration of the successors of a node
 			Customer currentNode = E.get(0);
@@ -242,7 +242,7 @@ public class EspprcInstance {
 //			E.remove(currentNode);
 			E.remove(0);
 			
-			itNumber ++;
+//			itNumber ++;
 		}while( !E.isEmpty() );
 
 		return labels;
