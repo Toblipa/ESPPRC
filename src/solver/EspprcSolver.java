@@ -92,7 +92,7 @@ public class EspprcSolver {
 		String out = "";
     	
 		int currentNode = 0;
-    	int nbVisitedNodes = 1;
+    	int nbVisitedNodes = 0;
     	
 		boolean finished = false;
     	while ( !finished ) {

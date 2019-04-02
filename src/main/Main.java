@@ -15,8 +15,10 @@ import solver.EspprcSolver;
 public class Main {
 
 	public static void main(String[] args) throws IOException {
+		
+		// Degault options
 		int nbClients = 50;
-		int useCplex = 1;
+		int useCplex = 0;
 		int timeLimit = 600;
 		String instanceType = "C";
 		String directory = "./instances/solomon_"+nbClients+"/";
@@ -55,13 +57,9 @@ public class Main {
 		else {
 			solomonInstances = getRInstances();
 		}
-
-		ESPPRCResult[] cplexResults = new ESPPRCResult[solomonInstances.length];
-		ESPPRCResult[] labelingResults = new ESPPRCResult[solomonInstances.length];
-
-		File file = new File("results_"+instanceType+"_"+nbClients+".txt");
-
+		
 		// creates the file
+		File file = new File("results_"+instanceType+"_"+nbClients+".txt");
 		file.createNewFile();
 
 		// creates a FileWriter Object
@@ -82,6 +80,10 @@ public class Main {
 		writer.close();
 		
 		writer = new FileWriter(file, true);
+		
+		// We stock results in a list
+		ESPPRCResult[] cplexResults = new ESPPRCResult[solomonInstances.length];
+		ESPPRCResult[] labelingResults = new ESPPRCResult[solomonInstances.length];
 		
 		for(int i = 0; i < solomonInstances.length; i++) {
 			// Creating the instance
@@ -122,25 +124,32 @@ public class Main {
 			
 			System.out.println("--------------------------------------");
 			
-			// Write results in a file			
-			writer.write(solomonInstances[i]+"\t");
-			
-			writer.write(cplexResults[i].getCost()+"\t");
-			writer.write(cplexResults[i].getTimeElapsed()+"\t");
-			writer.write(cplexResults[i].getNbVisitedNodes()+"\t");
-			writer.write(cplexResults[i].getRoute()+"\t");
-			
-			writer.write(labelingResults[i].getCost()+"\t");
-			writer.write(labelingResults[i].getTimeElapsed()+"\t");
-			writer.write(labelingResults[i].getNbVisitedNodes()+"\t");
-			writer.write(labelingResults[i].getRoute()+"\t");
-			writer.write(labelingResults[i].getNbFeasibleRoutes()+"\t");
-			writer.write(labelingResults[i].getNbTotalRoutes()+"\n");
-			
-			writer.flush();
+			// Write results in a file
+			writeResults(writer, solomonInstances[i], cplexResults[i], labelingResults[i]);
 		}
 		
 		writer.close();
+	}
+
+	private static void writeResults(FileWriter writer, String solomonInstance, ESPPRCResult cplexResult,
+			ESPPRCResult labelingResult) throws IOException {
+		
+		writer.write(solomonInstance+"\t");
+		
+		writer.write(cplexResult.getCost()+"\t");
+		writer.write(cplexResult.getTimeElapsed()+"\t");
+		writer.write(cplexResult.getNbVisitedNodes()+"\t");
+		writer.write(cplexResult.getRoute()+"\t");
+		
+		writer.write(labelingResult.getCost()+"\t");
+		writer.write(labelingResult.getTimeElapsed()+"\t");
+		writer.write(labelingResult.getNbVisitedNodes()+"\t");
+		writer.write(labelingResult.getRoute()+"\t");
+		writer.write(labelingResult.getNbFeasibleRoutes()+"\t");
+		writer.write(labelingResult.getNbTotalRoutes()+"\n");
+		
+		writer.flush();
+		
 	}
 
 	/**
@@ -184,7 +193,8 @@ public class Main {
         System.out.println("Generated "+nbFeasibleRoutes+" routes");
     	System.out.println("Algorithm has finished in "+(timeElapsed/1000000)+" milliseconds");
 		
-		return new ESPPRCResult(minCostRoute.getRoute(), minCostRoute.getCost(), timeElapsed/1000000, minCostRoute.getNbVisitedNodes(), nbFeasibleRoutes, nbGeneratedLabels);
+		return new ESPPRCResult(minCostRoute.getRoute(), minCostRoute.getCost(), timeElapsed/1000000,
+				minCostRoute.getNbVisitedNodes(), nbFeasibleRoutes, nbGeneratedLabels);
 	}
 	
 	/**
@@ -230,7 +240,6 @@ public class Main {
 		}
 	}
 	
-	@SuppressWarnings("unused")
 	private static String[] getCInstances() {
 		String[] instances = new String[9];
 		
@@ -241,8 +250,8 @@ public class Main {
 		instances[4] = "C105.txt";
 		instances[5] = "C106.txt";
 		instances[6] = "C107.txt";
-		instances[7] = "C104.txt";
-		instances[8] = "C103.txt";
+		instances[7] = "C103.txt";
+		instances[8] = "C101.txt";
 		
 //		instances[9] = "C201.txt";
 //		instances[10] = "C202.txt";
@@ -256,7 +265,6 @@ public class Main {
 		return instances;
 	}
 	
-	@SuppressWarnings("unused")
 	private static String[] getRInstances() {
 		String[] instances = new String[12];
 		
@@ -288,7 +296,6 @@ public class Main {
 		return instances;
 	}
 	
-	@SuppressWarnings("unused")
 	private static String[] getRCInstances() {
 		String[] instances = new String[8];
 		

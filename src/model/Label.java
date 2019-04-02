@@ -11,7 +11,6 @@ public class Label {
 	private Label previousLabel;
 	
 	// The resources used until now
-//	Map<String, Double> resources;
 	double[] resources;
 	
 	// The total cost of the route
@@ -40,7 +39,9 @@ public class Label {
 		this.current = node;
 		this.resources = new double[2];
 	}
-
+	
+	// ===== GETTERS & SETTERS =====
+	
 	public Customer getCurrent() {
 		return current;
 	}
@@ -113,10 +114,6 @@ public class Label {
 		this.nbVisitedNodes = nbVisitedNodes;
 	}
 	
-//	public void addResource(String name) {
-//		this.resources.put(name, 0.0);
-//	}
-	
 	public void addToResource(int index, double value) {
 		this.resources[index] += value;
 	}
@@ -130,7 +127,7 @@ public class Label {
 	}
 	
 	/**
-	 * Returns true if the labels are equal, false if not.
+	 * Returns true if labels are equal, false if not.
 	 * 
 	 * @param label
 	 * @return
@@ -216,20 +213,24 @@ public class Label {
 	 */
 	
 	public boolean dominates(Label label) {
+		// Check if labels are comparable
 		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {
 			return false;
 		}
 		
+		// Check cost & number of unreachable nodes
 		if(this.cost > label.getCost() || this.nbUnreachableNodes > label.getNbUnreachableNodes()) {
 			return false;
 		}
 		
+		// Check resources
 		for (int r = 0; r < this.resources.length; r++) {
 			if(this.resources[r] > label.getResource(r)) {
 				return false;
 			}
 		}
 		
+		// Check unreachable nodes one by one
 		boolean[] externalUnreachableNodes = label.getUnreachableNodes();
 		for(int k = 0; k < this.unreachableNodes.length; k++) {
 			if( this.unreachableNodes[k] && !externalUnreachableNodes[k] ) {
@@ -237,8 +238,8 @@ public class Label {
 			}
 		}
 		
+		// If we have not broke, the current label dominates the other
 		label.setDominated(true);
-		
 		return true;
 	}
 
@@ -252,6 +253,10 @@ public class Label {
 				" cost: " + this.cost + "]";
 	}
 	
+	/**
+	 * Returns the path in form of a string
+	 * @return
+	 */
 	public String getRoute() {
 		if (this.current == null) return "Empty Label";
 		
@@ -259,9 +264,13 @@ public class Label {
 		
 		String id = current.isDepot() ? "Depot" : current.getCustomerId()+"";
 		
-		return this.previousLabel.getRoute()+"->" + id;
+		return this.previousLabel.getRoute()+", " + id;
 	}
 	
+	/**
+	 * Returns the visitation vector in form of a string
+	 * @return
+	 */
 	public String stringifyVisitationVector() {
 		String out = "[ ";
 		for(int index = 0; index < this.visitationVector.length; index++) {
@@ -271,25 +280,31 @@ public class Label {
 		return out;
 	}
 	
-//	public String stringifyUnreachableNodes() {
-//		String out = "[ ";
-//		for(int index = 0; index < this.unreachableNodes.; index++) {
-//			out += this.unreachableNodes[index]+" ";
-//		}
-//		out += "]";
-//		return out;
-//	}
+	/**
+	 * Returns the unreachable nodes vector in form of a string
+	 * @return
+	 */
+	public String stringifyUnreachableNodes() {
+		String out = "[ ";
+		for(int index = 0; index < this.unreachableNodes.length; index++) {
+			out += this.unreachableNodes[index]+" ";
+		}
+		out += "]";
+		return out;
+	}
 	
-//	public String stringifyResources() {
-//		String out = "{";
-//		for (String name: this.resources.keySet()){
-//			String key = name.toString();
-//			String value = this.resources.get(name).toString();
-//			out += (key + ": " + value+", ");
-//		}
-//		out += "}";
-//		return out;
-//	}
+	/**
+	 * Returns the resources utilization in form of a string
+	 * @return
+	 */
+	public String stringifyResource() {
+		String out = "[ ";
+		for(int index = 0; index < this.resources.length; index++) {
+			out += this.resources[index]+", ";
+		}
+		out += "]";
+		return out;
+	}
 	
 	/*
 	 * Efficency test

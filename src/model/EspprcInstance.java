@@ -192,11 +192,11 @@ public class EspprcInstance {
 		// Customers waiting to be treated
 		ArrayList<Customer> E = new ArrayList<Customer>();
 		E.add(this.getNodes()[0]);
-//		int itNumber = 0;
+		int itNumber = 0;
 		
 		do {
 			// Debug puposes
-//			this.displayE(E, itNumber);
+			this.displayE(E, itNumber);
 			
 			// Exploration of the successors of a node
 			Customer currentNode = E.get(0);
@@ -230,7 +230,15 @@ public class EspprcInstance {
 				labels[currentSuccessor.getCustomerId()] = resultEFF.getLabels();
 
 				// End EFF
-				if( resultEFF.isHasChanged() && !E.contains(currentSuccessor) ) {
+//				if( !E.contains(currentSuccessor) && resultEFF.isHasChanged() ) {
+//					E.add(currentSuccessor);
+//				}
+				
+				if( resultEFF.isHasChanged() ) {
+					int ind = E.indexOf(currentSuccessor);
+					if(ind != -1) { 
+						E.remove(ind);
+					}
 					E.add(currentSuccessor);
 				}
 			}
@@ -239,7 +247,7 @@ public class EspprcInstance {
 //			E.remove(currentNode);
 			E.remove(0);
 			
-//			itNumber ++;
+			itNumber ++;
 		}while( !E.isEmpty() );
 
 		return labels;
@@ -420,7 +428,7 @@ public class EspprcInstance {
 	}
 
 	/**
-	 * Extends the current label to an adjacent node
+	 * Extend the current label to an adjacent node
 	 * 
 	 * @param currentLabel
 	 * @param currentSuccessor

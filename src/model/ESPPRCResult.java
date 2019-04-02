@@ -14,10 +14,13 @@ public class ESPPRCResult{
 	// Time to find the solution in milliseconds
 	private long timeElapsed;
 	
+	// Number of visited nodes during the path
 	private int nbVisitedNodes;
-
+	
+	// Number of feasible routes found at the depot
 	private int nbFeasibleRoutes;
 	
+	// Number of routes generated during the whole algorithm
 	private int nbTotalRoutes;
 		
 	public ESPPRCResult(String route, double cost, long timeElapsed, int nbVisitedNodes, int nbFeasibleRoutes, int nbTotalRoutes) {
