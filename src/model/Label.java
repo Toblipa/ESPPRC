@@ -3,6 +3,7 @@ package model;
 import java.util.BitSet;
 
 public class Label {
+	// TODO add extended flag
 	
 	// The current node
 	private Customer current;
@@ -11,6 +12,7 @@ public class Label {
 	private Label previousLabel;
 	
 	// The resources used until now
+	// TODO create a Resource class
 	double[] resources;
 	
 	// The total cost of the route
@@ -124,6 +126,10 @@ public class Label {
 	
 	public Double getResource(int index) {
 		return this.resources[index];
+	}
+	
+	public boolean isReachable(Customer currentSuccessor) {
+		return this.unreachableNodes[ currentSuccessor.getCustomerId() ];
 	}
 	
 	/**
@@ -310,8 +316,8 @@ public class Label {
 	 * Efficency test
 	 */
 	public static void main(String[] args) {
-		int nbTests = 100;
-		int nbNodes = 100;
+		int nbTests = 10;
+		int nbNodes = 50;
 		int nbLists = 2000;
 		
 		long totalIntegerSetTime = 0;

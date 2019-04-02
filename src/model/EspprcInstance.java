@@ -5,7 +5,9 @@ import java.util.Random;
 
 public class EspprcInstance {
 	
-	// the nodes
+	/**
+	 * the nodes
+	 */
 	private Customer[] nodes;
 	
 	// the successors to every node
@@ -18,7 +20,7 @@ public class EspprcInstance {
 	private double[][] distance;
 	
 	// the quantity of vehicles
-	private int vehicles;
+	private int nbVehicles;
 	
 	// the capacity of the uniform float of vehicles
 	private double capacity;
@@ -106,17 +108,21 @@ public class EspprcInstance {
 	public Customer[] getNodes() {
 		return nodes;
 	}
+	
+	public Customer getNode(int pos) {
+		return nodes[pos];
+	}
 
 	public void setNodes(Customer[] nodes) {
 		this.nodes = nodes;
 	}
 	
 	public int getVehicles() {
-		return vehicles;
+		return nbVehicles;
 	}
 
 	public void setVehicles(int vehicles) {
-		this.vehicles = vehicles;
+		this.nbVehicles = vehicles;
 	}
 
 	public double[][] getCost() {
@@ -164,6 +170,7 @@ public class EspprcInstance {
 	 *  
 	 * @return
 	 */
+	// TODO move to solver package
 	public ArrayList<Label>[] genFeasibleRoutes() {
 		
 		// Initialization
@@ -190,6 +197,7 @@ public class EspprcInstance {
 		}
 		
 		// Customers waiting to be treated
+		//Stack<Customer> E = new Stack<Customer>();
 		ArrayList<Customer> E = new ArrayList<Customer>();
 		E.add(this.getNodes()[0]);
 		int itNumber = 0;
@@ -202,20 +210,15 @@ public class EspprcInstance {
 			Customer currentNode = E.get(0);
 			
 			ArrayList<Customer> nodeSuccessors = this.successors[currentNode.getCustomerId()];
-			for(int n = 0; n < nodeSuccessors.size() ; n++) {
-				// NOTE: n is NOT the index of the node
-				// instead, use getCustomerId() function
-				Customer currentSuccessor = nodeSuccessors.get(n);
+			for(Customer currentSuccessor : nodeSuccessors) {
 				
 				// Set of labels extended from i to j
 				ArrayList<Label> extendedLabels = new ArrayList<Label>();
 				
 				// We extend all currentNode labels
-				for(int l = 0; l < labels[currentNode.getCustomerId()].size(); l++) {
-					Label currentLabel = labels[currentNode.getCustomerId()].get(l);
-					
-					boolean[] unreachableVector = currentLabel.getUnreachableNodes();
-					if( !unreachableVector[currentSuccessor.getCustomerId()] ) {
+				int customerId = currentNode.getCustomerId();
+				for(Label currentLabel : labels[customerId]) {
+					if( currentLabel.isReachable( currentSuccessor )) {
 						Label ext = this.extendLabel(currentLabel, currentSuccessor);
 						extendedLabels.add(ext);
 					}
@@ -230,15 +233,7 @@ public class EspprcInstance {
 				labels[currentSuccessor.getCustomerId()] = resultEFF.getLabels();
 
 				// End EFF
-//				if( !E.contains(currentSuccessor) && resultEFF.isHasChanged() ) {
-//					E.add(currentSuccessor);
-//				}
-				
-				if( resultEFF.isHasChanged() ) {
-					int ind = E.indexOf(currentSuccessor);
-					if(ind != -1) { 
-						E.remove(ind);
-					}
+				if( !E.contains(currentSuccessor) && resultEFF.isHasChanged() ) {
 					E.add(currentSuccessor);
 				}
 			}
@@ -434,6 +429,7 @@ public class EspprcInstance {
 	 * @param currentSuccessor
 	 * @return
 	 */
+	// TODO move to Label class
 	private Label extendLabel(Label currentLabel, Customer currentSuccessor) {
 		
 		Customer currentNode = currentLabel.getCurrent();
