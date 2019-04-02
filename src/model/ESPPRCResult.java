@@ -14,10 +14,26 @@ public class ESPPRCResult{
 	// Time to find the solution in milliseconds
 	private long timeElapsed;
 	
-	public ESPPRCResult(String route, double cost, long timeElapsed) {
+	private int nbVisitedNodes;
+
+	private int nbFeasibleRoutes;
+	
+	private int nbTotalRoutes;
+		
+	public ESPPRCResult(String route, double cost, long timeElapsed, int nbVisitedNodes, int nbFeasibleRoutes, int nbTotalRoutes) {
 		this.route = route;
 		this.cost = cost;
 		this.timeElapsed = timeElapsed;
+		this.nbVisitedNodes = nbVisitedNodes;
+		this.nbFeasibleRoutes = nbFeasibleRoutes;
+		this.nbTotalRoutes = nbTotalRoutes;
+	}
+	
+	public ESPPRCResult(String route, double cost, long timeElapsed, int nbVisitedNodes) {
+		this.route = route;
+		this.cost = cost;
+		this.timeElapsed = timeElapsed;
+		this.nbVisitedNodes = nbVisitedNodes;
 	}
 	
 	public String getRoute() {
@@ -37,5 +53,29 @@ public class ESPPRCResult{
 	}
 	public void setTimeElapsed(long timeElapsed) {
 		this.timeElapsed = timeElapsed;
+	}
+
+	public int getNbVisitedNodes() {
+		return nbVisitedNodes;
+	}
+
+	public void setNbVisitedNodes(int nbVisitedNodes) {
+		this.nbVisitedNodes = nbVisitedNodes;
+	}
+
+	public int getNbFeasibleRoutes() {
+		return nbFeasibleRoutes;
+	}
+
+	public void setNbFeasibleRoutes(int nbFeasibleRoutes) {
+		this.nbFeasibleRoutes = nbFeasibleRoutes;
+	}
+
+	public int getNbTotalRoutes() {
+		return nbTotalRoutes;
+	}
+
+	public void setNbTotalRoutes(int nbTotalRoutes) {
+		this.nbTotalRoutes = nbTotalRoutes;
 	}
 }

@@ -1,10 +1,7 @@
 package model;
 
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Random;
-
-import model.Label.DominanceResult;
 
 public class EspprcInstance {
 	
@@ -37,7 +34,7 @@ public class EspprcInstance {
 	// ===== PREPROCESSING NODES =====
 	
 	/**
-	 * Funtion to stock the arc costs in a matrix
+	 * To stock the arc costs and distance in a matrix
 	 * It ramdomly generates negative costs for the arcs
 	 */
 	public void buildArcs() {
@@ -70,7 +67,7 @@ public class EspprcInstance {
 	}
 	
 	/**
-	 * Function to see which arcs are allowed or forbiden
+	 * To see which arcs are allowed or forbidden
 	 */
 	@SuppressWarnings("unchecked")
 	public void buildSuccessors() {
@@ -78,7 +75,7 @@ public class EspprcInstance {
 		
 		for(int i = 0; i < this.getNodes().length; i++) {
 			Customer node = this.getNodes()[i];
-			ArrayList<Customer> sux = new ArrayList<Customer>();
+			ArrayList<Customer> successorList = new ArrayList<Customer>();
 
 			this.successors[i] = new ArrayList<Customer>();
 		
@@ -93,7 +90,7 @@ public class EspprcInstance {
 				// Check if it is possible
 				if( i != n && nextNode.getEnd() >= timeToReach ) {
 					this.successors[i].add(nextNode);
-					sux.add(nextNode);
+					successorList.add(nextNode);
 				}
 			}
 		}
@@ -176,16 +173,13 @@ public class EspprcInstance {
 		// Origin node
 		Label originLabel = new Label( this.getNodes()[0]);
 		
-		BitSet originUnreachableVector = new BitSet();
-		originUnreachableVector.set(0);
+		boolean[] originUnreachableVector = new boolean[this.getNodes().length];
+		originUnreachableVector[0] = true;
 		originLabel.setUnreachableNodes(originUnreachableVector);
 		
 		int[] originVisitationVector = new int[this.getNodes().length];
 		originVisitationVector[0] = 1;
 		originLabel.setVisitationVector( originVisitationVector );
-		
-//		originLabel.addResource("Time");
-//		originLabel.addResource("Capacity");
 		
 		labels[0] = new ArrayList<Label>();
 		labels[0].add( originLabel );
@@ -199,10 +193,6 @@ public class EspprcInstance {
 		ArrayList<Customer> E = new ArrayList<Customer>();
 		E.add(this.getNodes()[0]);
 //		int itNumber = 0;
-		
-		// TODO clean
-		long timeSpentEFF = 0;
-		long timeSpentExtending = 0;
 		
 		do {
 			// Debug puposes
@@ -221,35 +211,26 @@ public class EspprcInstance {
 				ArrayList<Label> extendedLabels = new ArrayList<Label>();
 				
 				// We extend all currentNode labels
-				long startTimeExtending = System.nanoTime(); // TODO clean
 				for(int l = 0; l < labels[currentNode.getCustomerId()].size(); l++) {
 					Label currentLabel = labels[currentNode.getCustomerId()].get(l);
 					
-					BitSet unreachableVector = currentLabel.getUnreachableNodes();
-					if( !unreachableVector.get(currentSuccessor.getCustomerId()) ) {
+					boolean[] unreachableVector = currentLabel.getUnreachableNodes();
+					if( !unreachableVector[currentSuccessor.getCustomerId()] ) {
 						Label ext = this.extendLabel(currentLabel, currentSuccessor);
 						extendedLabels.add(ext);
 					}
 				}
-				long endTimeExtending = System.nanoTime(); // TODO clean
-				timeSpentExtending += (endTimeExtending - startTimeExtending); // TODO clean
 				
 				ArrayList<Label> successorLabels = labels[currentSuccessor.getCustomerId()];
 
 //				EFF resultEFF = this.dummyEFF(successorLabels, extendedLabels);
-				
-				long startTimeEFF = System.nanoTime(); // TODO clean
-//				EFF resultEFF = this.methodEFF(successorLabels, extendedLabels);
-//				EFF resultEFF = this.methodEFF2(successorLabels, extendedLabels);
-				EFF resultEFF = this.methodEFF3(successorLabels, extendedLabels);
-				
-				long endTimeEFF = System.nanoTime(); // TODO clean
-				timeSpentEFF += (endTimeEFF - startTimeEFF); // TODO clean
-				
+//				EFF resultEFF = this.methodEFF1(successorLabels, extendedLabels);
+				EFF resultEFF = this.methodEFF2(successorLabels, extendedLabels);
+								
 				labels[currentSuccessor.getCustomerId()] = resultEFF.getLabels();
 
 				// End EFF
-				if(resultEFF.isHasChanged() && !E.contains(currentSuccessor)) {
+				if( resultEFF.isHasChanged() && !E.contains(currentSuccessor) ) {
 					E.add(currentSuccessor);
 				}
 			}
@@ -260,9 +241,6 @@ public class EspprcInstance {
 			
 //			itNumber ++;
 		}while( !E.isEmpty() );
-		
-		System.out.println("> Time Spent EFF: "+(timeSpentEFF/1000000));
-		System.out.println("> Time Spent Extending Labels: "+(timeSpentExtending/1000000));
 
 		return labels;
 	}
@@ -273,19 +251,10 @@ public class EspprcInstance {
 	private class EFF {
 		private ArrayList<Label> labels;
 		private boolean hasChanged;
-		private long timeSpentExtended;
-		private long timeSpentCurrent;
 		
 		public EFF(ArrayList<Label> labels, boolean hasChanged) {
 			this.labels = labels;
 			this.hasChanged = hasChanged;
-		}
-		
-		public EFF(ArrayList<Label> labels, boolean hasChanged, long timeSpentExtended, long timeSpentCurrent) {
-			this.labels = labels;
-			this.hasChanged = hasChanged;
-			this.timeSpentExtended = timeSpentExtended;
-			this.timeSpentCurrent = timeSpentCurrent;
 		}
 		
 		public ArrayList<Label> getLabels() {
@@ -304,92 +273,7 @@ public class EspprcInstance {
 	 * @param extendedLabels
 	 * @return
 	 */
-	public EFF methodEFF(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
-		// Flag to see if the successor labels have changed
-		boolean hasChanged = false;
-		
-		// Check if labels we have by far are dominated
-		// by the extended labels and viceversa
-		int removedLabels = 0;
-		
-		long timeSpentComparing = 0;
-		long timeReadingThrough = 0;
-		
-		for(int l=0; l < successorLabels.size(); l++) {
-			int removedExtendedLabels = 0;
-			
-			for(int f=0; f < extendedLabels.size(); f++) {
-				
-				long startTimeComparing = System.nanoTime();
-				DominanceResult response = successorLabels.get(l-removedLabels).checkDominance(extendedLabels.get(f-removedExtendedLabels));
-				long endTimeComparing = System.nanoTime();
-				
-				timeSpentComparing += (endTimeComparing - startTimeComparing);
-				
-				boolean equals = response.getEquals();
-				timeReadingThrough += response.getTimeElapsed();
-				
-				if( extendedLabels.get(f-removedExtendedLabels).isDominated() || equals) {
-					// if the extended label is dominated by the current label
-					// we remove the extended label
-					extendedLabels.remove(f-removedExtendedLabels);
-					removedExtendedLabels++;
-				}
-				else if( successorLabels.get(l-removedLabels).isDominated() ){
-					// if the current label is dominated by an extended label
-					// we remove the current label and break the inner for statement
-					successorLabels.remove(l-removedLabels);
-					removedLabels++;
-					hasChanged = true;
-					break;
-				}
-			}
-		}
-		
-		// Check dominance among extended labels
-		int removedBefore = 0;
-		
-		for(int f=0; f < extendedLabels.size(); f++) {
-			int removedAfter = 0;
-			
-			for(int g=f-removedBefore+1; g < extendedLabels.size(); g++) {
-				long startTimeComparing = System.nanoTime();
-				DominanceResult result = extendedLabels.get(f-removedBefore).checkDominance(extendedLabels.get(g-removedAfter));
-				long endTimeComparing = System.nanoTime();
-				timeSpentComparing += (endTimeComparing - startTimeComparing);
-				
-				timeReadingThrough += result.getTimeElapsed();
-
-				if( extendedLabels.get(g-removedAfter).isDominated() ) {
-					extendedLabels.remove(g-removedAfter);
-					removedAfter++;
-				}
-				else if( extendedLabels.get(g-removedAfter).isDominated() ) {
-					extendedLabels.remove(f-removedBefore);
-					removedBefore++;
-					removedAfter++;
-					break;
-				}
-			}
-		}
-		
-		// Check if successor labels have changed
-		if(!extendedLabels.isEmpty()) {
-			hasChanged = true;
-			successorLabels.addAll(extendedLabels);
-		}
-		
-		return new EFF(successorLabels, hasChanged, timeSpentComparing, timeReadingThrough);
-	}
-	
-	/**
-	 * The following function corresponds to the EEF method presented in (Feillet D, 2004)
-	 * 
-	 * @param successorLabels
-	 * @param extendedLabels
-	 * @return
-	 */
-	public EFF methodEFF2(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
+	public EFF methodEFF1(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
 		// Flag to see if the successor labels have changed
 		boolean hasChanged = false;
 		
@@ -397,9 +281,6 @@ public class EspprcInstance {
 		
 		// Check if labels we have by far are dominated
 		// by the extended labels and viceversa		
-		long timeSpentComparing = 0;
-		long timeReadingThrough = 0;
-		
 		for(int l=0; l < successorLabels.size(); l++) {
 			Label analyzingLabel = successorLabels.get(l);
 			int removedLabels = 0;
@@ -407,17 +288,9 @@ public class EspprcInstance {
 			for(int f=0; f < extendedLabels.size(); f++) {
 				Label extLabel = extendedLabels.get(f-removedLabels);
 				if( !extLabel.isDominated() ) {
+					boolean response = analyzingLabel.checkDominance(extLabel);					
 					
-					long startTimeComparing = System.nanoTime();
-					DominanceResult response = analyzingLabel.checkDominance(extLabel);
-					long endTimeComparing = System.nanoTime();
-					
-					timeSpentComparing += (endTimeComparing - startTimeComparing);
-					timeReadingThrough += response.getTimeElapsed();
-					
-					boolean equals = response.getEquals();
-					
-					if( equals ) {
+					if( response ) {
 						extendedLabels.remove(f-removedLabels);
 					}
 					else if(analyzingLabel.isDominated()) {
@@ -444,13 +317,7 @@ public class EspprcInstance {
 				Label extLabel2 = extendedLabels.get(g);
 				
 				if( !extLabel2.isDominated() ) {
-					long startTimeComparing = System.nanoTime();
-					DominanceResult response = extLabel1.checkDominance(extLabel2);
-					long endTimeComparing = System.nanoTime();
-					
-					timeSpentComparing += (endTimeComparing - startTimeComparing);
-					
-					timeReadingThrough += response.getTimeElapsed();
+					extLabel1.checkDominance(extLabel2);
 				}else { continue; }
 				
 				if( extLabel1.isDominated() ) { break; }
@@ -462,10 +329,10 @@ public class EspprcInstance {
 			}
 		}
 		
-		return new EFF(resultLabels, hasChanged, timeSpentComparing, timeReadingThrough);
+		return new EFF(resultLabels, hasChanged);
 	}
 	
-	private EFF methodEFF3(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
+	private EFF methodEFF2(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
 		// Flag to see if the successor labels have changed
 		boolean hasChanged = false;
 
@@ -473,8 +340,6 @@ public class EspprcInstance {
 
 		// Check if labels we have by far, are dominated
 		// by the extended labels and viceversa		
-		long timeSpentComparing = 0;
-		long timeReadingThrough = 0;
 		for(int l=0; l < successorLabels.size(); l++) {
 			Label analyzingLabel = successorLabels.get(l);
 			int removedLabels = 0;
@@ -531,7 +396,7 @@ public class EspprcInstance {
 			}
 		}
 
-		return new EFF(resultLabels, hasChanged, timeSpentComparing, timeReadingThrough);
+		return new EFF(resultLabels, hasChanged);
 	}
 	
 	/**
@@ -593,26 +458,28 @@ public class EspprcInstance {
 		extendedLabel.setNbVisitedNodes( currentLabel.getNbVisitedNodes() + 1 );
 		
 		// We update unreachable nodes
-		BitSet currentUnreachableNodes = currentLabel.getUnreachableNodes();
-		BitSet extendedUnreachableNodes = new BitSet();
-		extendedUnreachableNodes.set(currentSuccessor.getCustomerId());
+		boolean[] currentUnreachableNodes = currentLabel.getUnreachableNodes();
+		boolean[] extendedUnreachableNodes = new boolean[currentUnreachableNodes.length];
+		int extendedNbUnreachableNodes = 0;
 		
 		for(int i = 0; i < this.nodes.length; i++ ) {
-			if( currentSuccessor.isDepot() ) {
-				extendedUnreachableNodes.set(i);
+			if( currentSuccessor.isDepot() || i == currentSuccessor.getCustomerId()) {
+				extendedUnreachableNodes[i] = true;
+				extendedNbUnreachableNodes++;
 				continue;
 			}
 			
 			double timeToReach = extendedLabel.getResource(0) + currentSuccessor.getServiceTime() + this.distance[currentSuccessor.getCustomerId()][i];
-			if ( currentUnreachableNodes.get(i) ||
+			if ( currentUnreachableNodes[i] ||
 					( this.nodes[i].getEnd() < timeToReach ||
 							this.capacity < extendedLabel.getResource(1) + this.nodes[i].getDemand()) ) {
-				extendedUnreachableNodes.set(i);
+				extendedUnreachableNodes[i] = true;
+				extendedNbUnreachableNodes++;
 			}
 		}
 		
 		extendedLabel.setUnreachableNodes( extendedUnreachableNodes );
-		extendedLabel.setNbUnreachableNodes( extendedUnreachableNodes.cardinality() );
+		extendedLabel.setNbUnreachableNodes( extendedNbUnreachableNodes );
 				
 		return extendedLabel;
 	}
@@ -632,4 +499,5 @@ public class EspprcInstance {
 		}
 		System.out.println("}");		
 	}
+	
 }

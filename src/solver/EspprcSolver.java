@@ -30,12 +30,11 @@ public class EspprcSolver {
 	 * 
 	 * @return
 	 */
-	public ESPPRCResult solveESPPRC() {
+	public ESPPRCResult solveESPPRC(int timeLimit) {
 		try {
 			IloCplex cplex = new IloCplex();
-//			cplex.setOut(null);
-//			cplex.setParam(IloCplex.DoubleParam.TiLim, 300);
-
+			cplex.setParam(IloCplex.DoubleParam.TiLim, timeLimit);
+			
 			// Decision variables
 			IloNumVar[][] x = new IloNumVar[this.instance.getNodes().length][this.instance.getNodes().length];
 
@@ -70,9 +69,9 @@ public class EspprcSolver {
 			long timeElapsed = endTime - startTime;
 
 			// Display results
-			String route = this.displayRoutesResult(cplex, x);
+			Route route = this.displayRoutesResult(cplex, x);
 			
-			return new ESPPRCResult(route, cplex.getObjValue(), timeElapsed/1000000);
+			return new ESPPRCResult(route.getPath(), cplex.getObjValue(), timeElapsed/1000000, route.getNbVisitedNodes());
 			
 		} catch (IloException ex) {	
 			Logger.getLogger(EspprcSolver.class.getName()).log(Level.SEVERE, null, ex);
@@ -89,14 +88,18 @@ public class EspprcSolver {
 	 * @throws UnknownObjectException
 	 * @throws IloException
 	 */
-	private String displayRoutesResult(IloCplex cplex, IloNumVar[][] x) throws UnknownObjectException, IloException {
+	private Route displayRoutesResult(IloCplex cplex, IloNumVar[][] x) throws UnknownObjectException, IloException {		
 		String out = "";
-    	int currentNode = 0;
+    	
+		int currentNode = 0;
+    	int nbVisitedNodes = 1;
+    	
 		boolean finished = false;
     	while ( !finished ) {
     		for(int i = 1; i < x[currentNode].length; i++) {
     			if( cplex.getValue(x[currentNode][i]) > 0 ) {
-    				out += currentNode + " => ";
+    				nbVisitedNodes++;
+    				out += currentNode + ", ";
     				currentNode = i;
     				
     				if(i == x[currentNode].length - 1) {
@@ -112,7 +115,26 @@ public class EspprcSolver {
     			}
     		}
     	}
-    	return out;
+    	
+    	return new Route(out, nbVisitedNodes);
+	}
+	
+	public class Route {
+		String path;
+		int nbVisitedNodes;
+		
+		public Route(String path, int nbVisitedNodes) {
+			this.path = path;
+			this.nbVisitedNodes = nbVisitedNodes;
+		}
+		
+		public String getPath() {
+			return this.path;
+		}
+		
+		public int getNbVisitedNodes() {
+			return this.nbVisitedNodes;
+		}
 	}
 	
 	/**
@@ -225,7 +247,7 @@ public class EspprcSolver {
 			expression.addTerm(1.0, x[j][x.length-1]);
 		}
 		
-		cplex.addEq(expression, 1.0);
+		cplex.addLe(expression, 1.0);
 		
 		IloLinearNumExpr expr = cplex.linearNumExpr();
 		

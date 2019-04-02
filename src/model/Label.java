@@ -1,8 +1,6 @@
 package model;
 
 import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Map;
 
 public class Label {
 	
@@ -26,7 +24,7 @@ public class Label {
 	private int nbUnreachableNodes;
 	
 	// List of unreachable nodes from the current Label
-	private BitSet unreachableNodes;
+	private boolean[] unreachableNodes;
 	
 	// Number of visited nodes
 	private int nbVisitedNodes;
@@ -91,11 +89,11 @@ public class Label {
 		this.visitationVector = visitationVector;
 	}
 
-	public BitSet getUnreachableNodes() {
+	public boolean[] getUnreachableNodes() {
 		return unreachableNodes;
 	}
 
-	public void setUnreachableNodes(BitSet unreachableNodes) {
+	public void setUnreachableNodes(boolean[] unreachableNodes) {
 		this.unreachableNodes = unreachableNodes;
 	}
 
@@ -130,41 +128,22 @@ public class Label {
 	public Double getResource(int index) {
 		return this.resources[index];
 	}
-	/*
-	 * For time measure purposes
-	 */
-	class DominanceResult{
-		private boolean equals;
-		private long timeElapsed;
-		
-		public DominanceResult (boolean result, long timeElapsed) {
-			this.equals = result;
-			this.timeElapsed = timeElapsed;
-		}
-
-		public boolean getEquals() {
-			return equals;
-		}
-
-		public long getTimeElapsed() {
-			return timeElapsed;
-		}
-	}
+	
 	/**
 	 * Returns true if the labels are equal, false if not.
 	 * 
 	 * @param label
 	 * @return
 	 */
-	public DominanceResult checkDominance(Label label) {
+	public boolean checkDominance(Label label) {
 		
 		// We check if the dominance rules can be used
 		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {
-			return new DominanceResult(false, 0);
+			return false;
 		}
 		
 		if( this.previousLabel == label.getPreviousLabel() ){
-			return new DominanceResult (true, 0);
+			return true;
 		}
 		
 		boolean thisDominance = false;
@@ -177,16 +156,6 @@ public class Label {
 		boolean resourceThisDominance = true;
 		boolean resourceAnotherDominance = true;
 		
-//		for (Map.Entry<String, Double> l : this.resources.entrySet()) {
-//			resourceDiff = l.getValue().compareTo( label.getResource(l.getKey()) );
-//			
-//			if(resourceThisDominance && resourceDiff > 0) {
-//				resourceThisDominance = false;
-//			}
-//			else if(resourceAnotherDominance && resourceDiff < 0) {
-//				resourceAnotherDominance = false;
-//			}
-//		}
 		for (int r = 0; r < this.resources.length; r++) {
 			resourceDiff = this.resources[r] - label.getResource(r);
 			
@@ -200,10 +169,6 @@ public class Label {
 		
 		int nodesDiff = this.nbUnreachableNodes - label.getNbUnreachableNodes();
 		
-		// Only comparing time resource
-//		resourceThisDominance = this.getResource("Time").compareTo( label.getResource("Time") ) <= 0;
-//		resourceAnotherDominance =  this.getResource("Time").compareTo( label.getResource("Time") ) >= 0;
-		
 		if( costDiff <= 0 && resourceThisDominance && nodesDiff <= 0) {
 			thisDominance = true;
 		}
@@ -213,44 +178,42 @@ public class Label {
 		}
 		
 		if(thisDominance && anotherDominance) {
-			return new DominanceResult(false, 0);
+			return false;
 		}
 		
-		long startReadingThrough = System.nanoTime();		
 		if( thisDominance ) {
-			BitSet compareSet = (BitSet) label.getUnreachableNodes().clone();
-			compareSet.and(this.unreachableNodes);
+			boolean[] externalUnreachableNodes = label.getUnreachableNodes();
 			
-			thisDominance = thisDominance && compareSet.cardinality() == this.nbUnreachableNodes;
+			for(int k = 0; k < this.unreachableNodes.length; k++) {
+				if(this.unreachableNodes[k] && !externalUnreachableNodes[k]) {
+					thisDominance = false;
+					break;
+				}
+			}
 			
 			label.setDominated( thisDominance );
 		}
 		else if( anotherDominance ) {
-			BitSet compareSet = (BitSet) this.unreachableNodes.clone();
-			compareSet.and(label.getUnreachableNodes());
+			boolean[] externalUnreachableNodes = label.getUnreachableNodes();
 			
-			anotherDominance = anotherDominance && compareSet.cardinality() == label.getNbUnreachableNodes();
+			for(int k = 0; k < this.unreachableNodes.length; k++) {
+				if( !this.unreachableNodes[k] && externalUnreachableNodes[k] ) {
+					anotherDominance = false;
+					break;
+				}
+			}
 			
 			this.isDominated = anotherDominance;
 		}
-		long endReadingThrough = System.nanoTime();
-		
-//		if( thisDominance || anotherDominance ) {
-//			for(int n = 0; n < this.unreachableNodes.length; n++) {
-//				if(this.unreachableNodes[n] != label.getUnreachableNodes()[n] ) {
-//					thisDominance = thisDominance && (this.unreachableNodes[n] <= label.getUnreachableNodes()[n]);
-//					anotherDominance = anotherDominance && (this.unreachableNodes[n] >= label.getUnreachableNodes()[n]);
-//					
-//					if(!thisDominance && !anotherDominance) {
-//						break;
-//					}
-//				}
-//			}
-//		}
 				
-		return new DominanceResult(false, endReadingThrough - startReadingThrough);
-//		return false;
+		return false;
 	}
+	
+	/**
+	 * 
+	 * @param label
+	 * @return
+	 */
 	
 	public boolean dominates(Label label) {
 		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {
@@ -267,18 +230,16 @@ public class Label {
 			}
 		}
 		
-		long startReadingThrough = System.nanoTime();
+		boolean[] externalUnreachableNodes = label.getUnreachableNodes();
+		for(int k = 0; k < this.unreachableNodes.length; k++) {
+			if( this.unreachableNodes[k] && !externalUnreachableNodes[k] ) {
+				return false;
+			}
+		}
 		
-		BitSet compareSet = (BitSet) label.getUnreachableNodes().clone();
-		compareSet.and(this.unreachableNodes);
+		label.setDominated(true);
 		
-		boolean result = compareSet.cardinality() == this.nbUnreachableNodes;
-		
-		long endReadingThrough = System.nanoTime();
-
-		label.setDominated(result);
-		
-		return result;
+		return true;
 	}
 
 	@Override
@@ -298,7 +259,7 @@ public class Label {
 		
 		String id = current.isDepot() ? "Depot" : current.getCustomerId()+"";
 		
-		return this.previousLabel.getRoute()+" => " + id;
+		return this.previousLabel.getRoute()+"->" + id;
 	}
 	
 	public String stringifyVisitationVector() {
@@ -329,4 +290,89 @@ public class Label {
 //		out += "}";
 //		return out;
 //	}
+	
+	/*
+	 * Efficency test
+	 */
+	public static void main(String[] args) {
+		int nbTests = 100;
+		int nbNodes = 100;
+		int nbLists = 2000;
+		
+		long totalIntegerSetTime = 0;
+		long totalBooleanSetTime = 0;
+		long totalBitSetSetTime = 0;
+		
+		System.out.println("Start tests...");
+		for(int t = 0; t < nbTests; t++) {
+						
+			int[][] integerTestSet = new int[nbLists][nbNodes];
+			boolean[][] booleanTestSet = new boolean[nbLists][nbNodes];;
+			BitSet[] bitSetTestSet = new BitSet[nbLists];
+			for(int i = 0; i < nbLists; i++) {
+				BitSet bitSet = new BitSet();
+				for(int j = 0; j < nbNodes; j++) {
+					if(Math.random() > 0.5) {
+						integerTestSet[i][j] = 1;
+						booleanTestSet[i][j] = true;
+						bitSet.set(j);
+					}else {
+						integerTestSet[i][j] = 0;
+						booleanTestSet[i][j] = false;
+					}
+				}
+				bitSetTestSet[i] = bitSet;
+			}
+
+			for(int i = 0; i < nbLists; i++) {
+				for(int j = 0; j < nbLists; j ++) {
+					boolean integerResult;
+					boolean booleanResult;
+					boolean bitSetResult;
+					
+					integerResult = true;
+					long startIntegerTime = System.nanoTime();
+					for(int k = 0; k < nbNodes; k++) {
+						if(integerTestSet[i][k] > integerTestSet[j][k]) {
+							integerResult = false;
+							break;
+						}
+					}
+					long endIntegerTime = System.nanoTime();
+
+					totalIntegerSetTime += (endIntegerTime - startIntegerTime);
+					
+					booleanResult = true;
+					long startBooleanTime = System.nanoTime();
+					for(int k = 0; k < nbNodes; k++) {
+						if(booleanTestSet[i][k] && !booleanTestSet[j][k]) {
+							booleanResult = false;
+							break;
+						}
+					}
+					long endBooleanTime = System.nanoTime();
+
+					totalBooleanSetTime += (endBooleanTime - startBooleanTime);
+
+					long startBitSetTime = System.nanoTime();
+					BitSet compareSet = (BitSet) bitSetTestSet[i].clone();
+					compareSet.and(bitSetTestSet[j]);
+					bitSetResult = compareSet.cardinality() == bitSetTestSet[i].cardinality();
+					long endBitSetTime = System.nanoTime();
+
+					totalBitSetSetTime += (endBitSetTime - startBitSetTime);
+					
+					if(integerResult != booleanResult || integerResult != bitSetResult || booleanResult != bitSetResult) {
+						System.out.println("ERROR");
+					}
+				}
+			}
+		}
+		System.out.println("Finished tests");
+		
+		System.out.println("Results:");
+		System.out.println("Integer Comparison: "+(totalIntegerSetTime/1000000)/nbTests);
+		System.out.println("Boolean Comparison: "+(totalBooleanSetTime/1000000)/nbTests);
+		System.out.println("BitSet Comparison: "+(totalBitSetSetTime/1000000)/nbTests);
+	}
 }

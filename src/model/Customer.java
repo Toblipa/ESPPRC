@@ -1,7 +1,7 @@
 
 package model;
 
-public class Customer extends AbstractNode{
+public class Customer extends AbstractNode {
     
     private int customerId;
     

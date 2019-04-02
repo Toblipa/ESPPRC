@@ -1,0 +1,4 @@
+File name	Cplex Cost	Cplex Elapsed Time [ms]	Cplex N. Visited Nodes	Cplex Route	Labeling Cost	Labeling Elapsed Time [ms]	Labeling N. Visited Nodes	Labeling Route	Labeling N. Feasible Routes	Labeling N. Generated Routes
+C101.txt	-104.51176906646691	66	13	0, 5, 3, 7, 8, 10, 11, 9, 6, 4, 2, 1, Depot	-104.51176906646691	57	12	0->5->3->7->8->10->11->9->6->4->2->1->Depot	42	438
+C102.txt	-140.1337778401312	61499	14	0, 20, 26, 21, 10, 11, 9, 6, 3, 7, 5, 1, 2, Depot	-140.1337778401312	2071	13	0->20->26->21->10->11->9->6->3->7->5->1->2->Depot	130	9236
+C102.txt	-140.1337778401312	60051	14	0, 20, 26, 21, 10, 11, 9, 6, 3, 7, 5, 1, 2, Depot	-140.1337778401312	2006	13	0->20->26->21->10->11->9->6->3->7->5->1->2->Depot	130	9236
