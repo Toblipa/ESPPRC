@@ -129,7 +129,7 @@ public class Label {
 	}
 	
 	public boolean isReachable(Customer currentSuccessor) {
-		return this.unreachableNodes[ currentSuccessor.getCustomerId() ];
+		return !this.unreachableNodes[ currentSuccessor.getCustomerId() ];
 	}
 	
 	/**
@@ -217,7 +217,6 @@ public class Label {
 	 * @param label
 	 * @return
 	 */
-	
 	public boolean dominates(Label label) {
 		// Check if labels are comparable
 		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {

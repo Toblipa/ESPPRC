@@ -17,7 +17,7 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		
 		// Degault options
-		int nbClients = 50;
+		int nbClients = 25;
 		int useCplex = 0;
 		int timeLimit = 600;
 		String instanceType = "C";
@@ -29,7 +29,7 @@ public class Main {
 				if(arg.contains("-d")) {
 					directory = arg.substring(3);
 				}
-				else if(arg.contains("-instance")) {
+				else if(arg.contains("-instance")) { 
 					instanceType = arg.substring(10);
 				}
 				else if(arg.contains("-clients")) {

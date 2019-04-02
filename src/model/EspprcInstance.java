@@ -211,7 +211,7 @@ public class EspprcInstance {
 			
 			ArrayList<Customer> nodeSuccessors = this.successors[currentNode.getCustomerId()];
 			for(Customer currentSuccessor : nodeSuccessors) {
-				
+
 				// Set of labels extended from i to j
 				ArrayList<Label> extendedLabels = new ArrayList<Label>();
 				
@@ -398,7 +398,7 @@ public class EspprcInstance {
 				hasChanged = true;
 			}
 		}
-
+		
 		return new EFF(resultLabels, hasChanged);
 	}
 	
