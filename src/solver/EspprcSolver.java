@@ -13,7 +13,9 @@ import model.EspprcInstance;
 
 public class EspprcSolver {
 	
-	// The instance to solve
+	/**
+	 * The instance to solve
+	 */
 	EspprcInstance instance;
 	
 	/**

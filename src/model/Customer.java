@@ -3,7 +3,7 @@ package model;
 
 public class Customer extends AbstractNode {
     
-    private int customerId;
+    private int id;
     
     private int demand;
     
@@ -20,12 +20,12 @@ public class Customer extends AbstractNode {
 		super(x, y);
 	}
 
-	public int getCustomerId() {
-		return customerId;
+	public int getId() {
+		return id;
 	}
 
-	public void setCustomerId(int customerId) {
-		this.customerId = customerId;
+	public void setId(int id) {
+		this.id = id;
 	}
 
 	public int getDemand() {

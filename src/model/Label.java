@@ -2,36 +2,57 @@ package model;
 
 import java.util.BitSet;
 
-public class Label {
-	// TODO add extended flag
-	
-	// The current node
+public class Label {	
+	/**
+	 * The last node the label path has visited
+	 */
 	private Customer current;
 	
-	// The previous label used to build the current label
+	/**
+	 * The previous label used to build the current label
+	 */
 	private Label previousLabel;
 	
-	// The resources used until now
+	/**
+	 * The resources used until now
+	 */
 	// TODO create a Resource class
 	double[] resources;
 	
-	// The total cost of the route
+	/**
+	 * The total cost of the route
+	 */
 	private double cost;
 	
-	// If it is dominated by another route
+	/**
+	 * If it is dominated by another route
+	 */
 	private boolean isDominated;
 	
-	// Number of unreachable nodes
+	/**
+	 * If the label has already been extended to every successor of the curent node
+	 */
+	private boolean isExtended;
+	
+	/**
+	 * Number of unreachable nodes
+	 */
 	private int nbUnreachableNodes;
 	
-	// List of unreachable nodes from the current Label
+	/**
+	 * List of unreachable nodes from the current Label
+	 */
 	private boolean[] unreachableNodes;
 	
-	// Number of visited nodes
+	/**
+	 * Number of visited nodes
+	 */
 	private int nbVisitedNodes;
 	
-	// The nodes visited from the origin the current node
-	private int[] visitationVector;
+	/**
+	 * The nodes visited from the origin the current node
+	 */
+	private boolean[] visitationVector;
 		
 	public Label() {
 		this.resources = new double[2];
@@ -84,11 +105,11 @@ public class Label {
 		this.isDominated = isDominated;
 	}
 
-	public int[] getVisitationVector() {
+	public boolean[] getVisitationVector() {
 		return visitationVector;
 	}
 
-	public void setVisitationVector(int[] visitationVector) {
+	public void setVisitationVector(boolean[] visitationVector) {
 		this.visitationVector = visitationVector;
 	}
 
@@ -129,7 +150,15 @@ public class Label {
 	}
 	
 	public boolean isReachable(Customer currentSuccessor) {
-		return !this.unreachableNodes[ currentSuccessor.getCustomerId() ];
+		return !this.unreachableNodes[ currentSuccessor.getId() ];
+	}
+	
+	public boolean isExtended() {
+		return isExtended;
+	}
+
+	public void setExtended(boolean isExtended) {
+		this.isExtended = isExtended;
 	}
 	
 	/**
@@ -141,7 +170,7 @@ public class Label {
 	public boolean checkDominance(Label label) {
 		
 		// We check if the dominance rules can be used
-		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {
+		if(this.current.getId() != label.getCurrent().getId()) {
 			return false;
 		}
 		
@@ -219,7 +248,7 @@ public class Label {
 	 */
 	public boolean dominates(Label label) {
 		// Check if labels are comparable
-		if(this.current.getCustomerId() != label.getCurrent().getCustomerId()) {
+		if(this.current.getId() != label.getCurrent().getId()) {
 			return false;
 		}
 		
@@ -247,6 +276,70 @@ public class Label {
 		label.setDominated(true);
 		return true;
 	}
+	
+	/**
+	 * Extend the current label to an adjacent node
+	 * 
+	 * @param node
+	 * @param instance
+	 * @return
+	 */
+	public Label extendLabel(Customer node, EspprcInstance instance) {
+		
+		double arcCost = instance.getCost()[current.getId()][node.getId()];
+		double arcDistance = instance.getDistance()[current.getId()][node.getId()];
+		
+		// We create a new label on the node successor
+		Label extendedLabel = new Label( node );
+		
+		// We stock the previous label
+		extendedLabel.setPreviousLabel( this );
+		
+		// We add the cost
+		extendedLabel.setCost( this.cost + arcCost );
+		
+		// We add the resources of the label, considering we cannot visit the customer before the start time
+		if( node.getStart() > this.getResource(0) + current.getServiceTime() + arcDistance ) {
+			extendedLabel.setResource( 0, node.getStart() );
+		}
+		else {
+			extendedLabel.setResource( 0, this.getResource(0) + current.getServiceTime() + arcDistance );
+		}
+		// Add demand resource
+		extendedLabel.setResource( 1, this.getResource(1) + node.getDemand());
+		
+		// We update the visitation vector
+		boolean[] extendedVisitationVector = this.visitationVector.clone();
+		extendedVisitationVector[node.getId()] = true;
+		extendedLabel.setVisitationVector( extendedVisitationVector );
+		extendedLabel.setNbVisitedNodes( this.nbVisitedNodes + 1 );
+		
+		// We update unreachable nodes
+		boolean[] currentUnreachableNodes = this.unreachableNodes;
+		boolean[] extendedUnreachableNodes = new boolean[currentUnreachableNodes.length];
+		int extendedNbUnreachableNodes = 0;
+		
+		for(int i = 0; i < instance.getNodes().length; i++ ) {
+			if( node.isDepot() || i == node.getId()) {
+				extendedUnreachableNodes[i] = true;
+				extendedNbUnreachableNodes++;
+				continue;
+			}
+			
+			double timeToReach = extendedLabel.getResource(0) + node.getServiceTime() + instance.getDistance()[node.getId()][i];
+			if ( currentUnreachableNodes[i] ||
+					( instance.getNode(i).getEnd() < timeToReach ||
+							instance.getCapacity() < extendedLabel.getResource(1) + instance.getNode(i).getDemand()) ) {
+				extendedUnreachableNodes[i] = true;
+				extendedNbUnreachableNodes++;
+			}
+		}
+		
+		extendedLabel.setUnreachableNodes( extendedUnreachableNodes );
+		extendedLabel.setNbUnreachableNodes( extendedNbUnreachableNodes );
+				
+		return extendedLabel;
+	}
 
 	@Override
 	public String toString() {
@@ -254,7 +347,7 @@ public class Label {
 			return "Empty Label";
 		}
 		String dominated = this.isDominated?"Dominated ":"Non Dominated ";
-		return dominated + "Label [at " + current.getCustomerId() + "," +
+		return dominated + "Label [at " + current.getId() + "," +
 				" cost: " + this.cost + "]";
 	}
 	
@@ -265,9 +358,9 @@ public class Label {
 	public String getRoute() {
 		if (this.current == null) return "Empty Label";
 		
-		if (previousLabel == null) return current.getCustomerId()+"";
+		if (previousLabel == null) return current.getId()+"";
 		
-		String id = current.isDepot() ? "Depot" : current.getCustomerId()+"";
+		String id = current.isDepot() ? "Depot" : current.getId()+"";
 		
 		return this.previousLabel.getRoute()+", " + id;
 	}
@@ -311,13 +404,13 @@ public class Label {
 		return out;
 	}
 	
-	/*
+	/**
 	 * Efficency test
 	 */
 	public static void main(String[] args) {
-		int nbTests = 10;
-		int nbNodes = 50;
-		int nbLists = 2000;
+		int nbTests = 50;
+		int nbNodes = 25;
+		int nbLists = 1000;
 		
 		long totalIntegerSetTime = 0;
 		long totalBooleanSetTime = 0;

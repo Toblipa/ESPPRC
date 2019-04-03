@@ -86,7 +86,7 @@ public class SolomonReader {
 			
 			Customer depot = new Customer( Double.parseDouble(tokens[1]), Double.parseDouble(tokens[2]) );
 			
-			depot.setCustomerId( depotId );
+			depot.setId( depotId );
 			depot.setDemand( Integer.parseInt(tokens[3]) );
 			depot.setStart( Double.parseDouble(tokens[4]) );
 			depot.setEnd( Double.parseDouble(tokens[5]) );
@@ -102,14 +102,14 @@ public class SolomonReader {
 	private void readCustomer(String[] tokens) {
 		Customer customer = new Customer( Double.parseDouble(tokens[1]), Double.parseDouble(tokens[2]) );
 		
-		customer.setCustomerId( Integer.parseInt(tokens[0]) );
+		customer.setId( Integer.parseInt(tokens[0]) );
 		customer.setDemand( Integer.parseInt(tokens[3]) );
 		customer.setStart( Double.parseDouble(tokens[4]) );
 		customer.setEnd( Double.parseDouble(tokens[5]) );
 		customer.setServiceTime( Double.parseDouble(tokens[6]) );
 		
 		// Add the node to the instance
-		this.instance.getNodes()[customer.getCustomerId()] = customer;
+		this.instance.getNodes()[customer.getId()] = customer;
 	}
 
 	private void readVehicle(String[] tokens) {

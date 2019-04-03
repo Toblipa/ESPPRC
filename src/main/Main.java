@@ -5,20 +5,20 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import model.Customer;
 import model.ESPPRCResult;
 import model.EspprcInstance;
 import model.Label;
 import reader.SolomonReader;
 import solver.EspprcSolver;
+import solver.LabellingSolver;
 
 public class Main {
 
 	public static void main(String[] args) throws IOException {
 		
-		// Degault options
+		// Default options
 		int nbClients = 25;
-		int useCplex = 0;
+		int useCplex = 1;
 		int timeLimit = 600;
 		String instanceType = "R";
 		String directory = "./instances/solomon_"+nbClients+"/";
@@ -58,32 +58,18 @@ public class Main {
 			solomonInstances = getRInstances();
 		}
 		
-		// creates the file
+		// Create the file
 		File file = new File("results_"+instanceType+"_"+nbClients+".txt");
 		file.createNewFile();
 
-		// creates a FileWriter Object
-		FileWriter writer = new FileWriter(file);
+		// Write the titles to file
+		writeColTitles(file);
 		
-		writer.write( "File name"+"\t" +
-				"Cplex Cost" + "\t" +
-				"Cplex Elapsed Time [ms]" + "\t" +
-				"Cplex N. Visited Nodes" + "\t" +
-				"Cplex Route" + "\t" +
-				"Labeling Cost" + "\t" +
-				"Labeling Elapsed Time [ms]" + "\t" +
-				"Labeling N. Visited Nodes" + "\t" +
-				"Labeling Route" + "\t" + 
-				"Labeling N. Feasible Routes" + "\t" +
-				"Labeling N. Generated Routes" + "\n" );
+		FileWriter writer = new FileWriter(file, true);
 		
-		writer.close();
-		
-		writer = new FileWriter(file, true);
-		
-		// We stock results in a list
+		// Stock results in a list
 		ESPPRCResult[] cplexResults = new ESPPRCResult[solomonInstances.length];
-		ESPPRCResult[] labelingResults = new ESPPRCResult[solomonInstances.length];
+		ESPPRCResult[] labellingResults = new ESPPRCResult[solomonInstances.length];
 		
 		for(int i = 0; i < solomonInstances.length; i++) {
 			// Creating the instance
@@ -113,59 +99,88 @@ public class Main {
 	        
 			System.out.println("");
 			
-			labelingResults[i] = labelingAlgorithm(instance);
+			labellingResults[i] = labellingAlgorithm(instance, timeLimit);
 			
 			// Log results
 			System.out.println(cplexResults[i].getRoute());
 			System.out.println(cplexResults[i].getCost());
 			
-			System.out.println(labelingResults[i].getRoute());
-			System.out.println(labelingResults[i].getCost());
+			System.out.println(labellingResults[i].getRoute());
+			System.out.println(labellingResults[i].getCost());
 			
 			System.out.println("--------------------------------------");
 			
 			// Write results in a file
-			writeResults(writer, solomonInstances[i], cplexResults[i], labelingResults[i]);
+			writeResults(writer, solomonInstances[i], instance, cplexResults[i], labellingResults[i]);
 		}
 		
 		writer.close();
 	}
 
-	private static void writeResults(FileWriter writer, String solomonInstance, ESPPRCResult cplexResult,
-			ESPPRCResult labelingResult) throws IOException {
+	private static void writeColTitles(File file) throws IOException {
+		FileWriter writer = new FileWriter(file);
 		
-		writer.write(solomonInstance+"\t");
+		writer.write( "File name"+"\t" +
+				"N. Arcs" + "\t" +
+				"Density" + "\t" +
+				"% Neg. Arcs" + "\t" +
+				"Cplex Cost" + "\t" +
+				"Cplex E. Time [ms]" + "\t" +
+				"Cplex N. Visited Nodes" + "\t" +
+				"Cplex Route" + "\t" +
+				"Label. Cost" + "\t" +
+				"Label. E. Time [ms]" + "\t" +
+				"Label. N. Visited" + "\t" +
+				"Label. Route" + "\t" + 
+				"Label. N. Feasible Routes" + "\t" +
+				"Label. N. Generated Routes" + "\n" );
 		
-		writer.write(cplexResult.getCost()+"\t");
-		writer.write(cplexResult.getTimeElapsed()+"\t");
-		writer.write(cplexResult.getNbVisitedNodes()+"\t");
-		writer.write(cplexResult.getRoute()+"\t");
+		writer.close();
 		
-		writer.write(labelingResult.getCost()+"\t");
-		writer.write(labelingResult.getTimeElapsed()+"\t");
-		writer.write(labelingResult.getNbVisitedNodes()+"\t");
-		writer.write(labelingResult.getRoute()+"\t");
-		writer.write(labelingResult.getNbFeasibleRoutes()+"\t");
-		writer.write(labelingResult.getNbTotalRoutes()+"\n");
+	}
+
+	private static void writeResults(FileWriter writer, String solomonInstance, EspprcInstance instance,
+			ESPPRCResult cplexResult, ESPPRCResult labellingResult) throws IOException {
+		
+		writer.write( solomonInstance + "\t" );
+		
+		writer.write( instance.getNbArcs() + "\t" );
+		writer.write( instance.getDensity() + "\t" );
+		writer.write( ( instance.getNbNegativeArcs()/instance.getNbArcs() ) + "\t" );
+		
+		writer.write( cplexResult.getCost() + "\t" );
+		writer.write( cplexResult.getTimeElapsed() + "\t" );
+		writer.write( cplexResult.getNbVisitedNodes() + "\t" );
+		writer.write( cplexResult.getRoute() + "\t" );
+		
+		writer.write( labellingResult.getCost() + "\t" );
+		writer.write( labellingResult.getTimeElapsed() + "\t" );
+		writer.write( labellingResult.getNbVisitedNodes() + "\t" );
+		writer.write( labellingResult.getRoute() + "\t" );
+		writer.write( labellingResult.getNbFeasibleRoutes() + "\t" );
+		writer.write( labellingResult.getNbTotalRoutes() + "\n" );
 		
 		writer.flush();
 		
 	}
 
 	/**
-	 * Run the labeling algorithm described in (Feillet D, 2004)
+	 * Run the labelling algorithm described in (Feillet D, 2004)
 	 * @param fileName
 	 * @return
 	 */
-	public static ESPPRCResult labelingAlgorithm(EspprcInstance instance) {
+	public static ESPPRCResult labellingAlgorithm(EspprcInstance instance, int timeLimit) {
         
         // We start the label correcting algorithm
         System.out.println("START: Generating feasible routes");
         
+        // We initialize the solver
+        LabellingSolver solver = new LabellingSolver(instance);
+        
         // We start measuring the algorithm elapsed time
 		long startTime = System.nanoTime();
 		
-        ArrayList<Label>[] nodeLabels = instance.genFeasibleRoutes();
+        ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit);
         
 		long endTime = System.nanoTime();
 
@@ -211,47 +226,18 @@ public class Main {
 		return result;
 	}
 	
-	/**
-	 * For debug purposes
-	 * @param successors
-	 */
-	@SuppressWarnings("unused")
-	private static void printSuccessors(ArrayList<Customer>[] successors) {
-		for(int i = 0; i < successors.length; i++) {
-			System.out.print("Node "+i+": ");
-			for(int s = 0; s < successors[i].size(); s++) {
-				System.out.print(successors[i].get(s).getCustomerId()+", ");
-			}
-			System.out.println("");
-		}
-	}
-	
-	/**
-	 * For debug purposes
-	 * @param cost
-	 */
-	@SuppressWarnings("unused")
-	private static void printCostMatrix(double[][] cost) {
-		for( int i = 0; i < cost.length; i++ ) {
-			for( int j= 0; j < cost[i].length; j++ ) {
-				System.out.print( Math.floor(cost[i][j]*10)/10+" ");
-			}
-			System.out.println("");
-		}
-	}
-	
 	private static String[] getCInstances() {
 		String[] instances = new String[9];
 		
 		instances[0] = "C101.txt";
 		instances[1] = "C102.txt";
-		instances[2] = "C108.txt";
-		instances[3] = "C109.txt";
+		instances[2] = "C103.txt";
+		instances[3] = "C104.txt";
 		instances[4] = "C105.txt";
 		instances[5] = "C106.txt";
 		instances[6] = "C107.txt";
-		instances[7] = "C103.txt";
-		instances[8] = "C101.txt";
+		instances[7] = "C108.txt";
+		instances[8] = "C109.txt";
 		
 //		instances[9] = "C201.txt";
 //		instances[10] = "C202.txt";
@@ -301,12 +287,12 @@ public class Main {
 		
 		instances[0] = "RC101.txt";
 		instances[1] = "RC102.txt";
-		instances[2] = "RC108.txt";
-		instances[3] = "RC107.txt";
+		instances[2] = "RC103.txt";
+		instances[3] = "RC104.txt";
 		instances[4] = "RC105.txt";
 		instances[5] = "RC106.txt";
-		instances[6] = "RC104.txt";
-		instances[7] = "RC103.txt";
+		instances[6] = "RC107.txt";
+		instances[7] = "RC108.txt";
 		
 //		instances[8] = "RC201.txt";
 //		instances[9] = "RC202.txt";
