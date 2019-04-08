@@ -100,16 +100,16 @@ public class EspprcSolver {
     	while ( !finished ) {
     		for(int i = 1; i < x[currentNode].length; i++) {
     			if( cplex.getValue(x[currentNode][i]) > 0 ) {
-    				nbVisitedNodes++;
-    				out += currentNode + ", ";
-    				currentNode = i;
     				
     				if(i == x[currentNode].length - 1) {
     					finished = true;
-    					out += "Depot";
+//    					out += "Depot";
+    					break;
     				}
     				
-    				break;
+    				nbVisitedNodes++;
+    				out += i + ", ";
+    				currentNode = i;
     			}
     			
     			if(i == x[currentNode].length - 1) {

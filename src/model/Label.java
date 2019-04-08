@@ -19,6 +19,8 @@ public class Label {
 	// TODO create a Resource class
 	double[] resources;
 	
+	Resources resource;
+	
 	/**
 	 * The total cost of the route
 	 */
@@ -149,6 +151,9 @@ public class Label {
 		return this.resources[index];
 	}
 	
+	public Resources getRes(){
+		return resource;
+	}
 	public boolean isReachable(Customer currentSuccessor) {
 		return !this.unreachableNodes[ currentSuccessor.getId() ];
 	}
@@ -159,6 +164,10 @@ public class Label {
 
 	public void setExtended(boolean isExtended) {
 		this.isExtended = isExtended;
+	}
+	
+	public void setRes(Resources resource) {
+		this.resource = resource;
 	}
 	
 	/**
@@ -252,6 +261,10 @@ public class Label {
 			return false;
 		}
 		
+		if( !this.resource.lesserThan( label.getRes() ) ) {
+			return false;
+		}
+		
 		// Check cost & number of unreachable nodes
 		if(this.cost > label.getCost() || this.nbUnreachableNodes > label.getNbUnreachableNodes()) {
 			return false;
@@ -295,6 +308,9 @@ public class Label {
 		// We stock the previous label
 		extendedLabel.setPreviousLabel( this );
 		
+		Resources extendedResources = this.resource.extendResources(instance, this.getCurrent(), node);
+		extendedLabel.setRes(extendedResources);
+				
 		// We add the cost
 		extendedLabel.setCost( this.cost + arcCost );
 		
@@ -309,10 +325,9 @@ public class Label {
 		extendedLabel.setResource( 1, this.getResource(1) + node.getDemand());
 		
 		// We update the visitation vector
-		boolean[] extendedVisitationVector = this.visitationVector.clone();
-		extendedVisitationVector[node.getId()] = true;
-		extendedLabel.setVisitationVector( extendedVisitationVector );
-		extendedLabel.setNbVisitedNodes( this.nbVisitedNodes + 1 );
+		extendedLabel.setVisitationVector( this.visitationVector.clone() );
+		extendedLabel.setNbVisitedNodes( this.nbVisitedNodes );
+		extendedLabel.extendVisitationVector( node );
 		
 		// We update unreachable nodes
 		boolean[] currentUnreachableNodes = this.unreachableNodes;
@@ -341,6 +356,11 @@ public class Label {
 		return extendedLabel;
 	}
 
+	private void extendVisitationVector(Customer node) {
+		this.visitationVector[node.getId()] = true;
+		this.nbVisitedNodes++;
+	}
+
 	@Override
 	public String toString() {
 		if(this.current==null) {
@@ -358,11 +378,11 @@ public class Label {
 	public String getRoute() {
 		if (this.current == null) return "Empty Label";
 		
-		if (previousLabel == null) return current.getId()+"";
+		if (previousLabel == null) return "";
 		
-		String id = current.isDepot() ? "Depot" : current.getId()+"";
+		String id = current.isDepot() ? "" : current.getId()+", ";
 		
-		return this.previousLabel.getRoute()+", " + id;
+		return this.previousLabel.getRoute() + id;
 	}
 	
 	/**
@@ -402,6 +422,26 @@ public class Label {
 		}
 		out += "]";
 		return out;
+	}
+	
+	/**
+	 * Given an instance, it returns a Label in the origin node
+	 * @param instance
+	 * @return
+	 */
+	public static Label createOriginLabel(EspprcInstance instance) {
+		Customer[] instanceNodes = instance.getNodes();
+		Label originLabel = new Label( instanceNodes[0] );
+		
+		boolean[] originUnreachableVector = new boolean[instanceNodes.length];
+		originUnreachableVector[0] = true;
+		originLabel.setUnreachableNodes(originUnreachableVector);
+		
+		boolean[] originVisitationVector = new boolean[instanceNodes.length];
+		originVisitationVector[0] = true;
+		originLabel.setVisitationVector( originVisitationVector );
+		
+		return originLabel;
 	}
 	
 	/**

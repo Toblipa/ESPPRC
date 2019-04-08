@@ -1,6 +1,7 @@
 package solver;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -34,30 +35,26 @@ public class LabellingSolver {
 		ArrayList<Label>[] labels = new ArrayList[instanceNodes.length];
 		
 		// Origin node
-		Label originLabel = new Label( instanceNodes[0] );
-		
-		boolean[] originUnreachableVector = new boolean[instanceNodes.length];
-		originUnreachableVector[0] = true;
-		originLabel.setUnreachableNodes(originUnreachableVector);
-		
-		boolean[] originVisitationVector = new boolean[instanceNodes.length];
-		originVisitationVector[0] = true;
-		originLabel.setVisitationVector( originVisitationVector );
+		Label originLabel = Label.createOriginLabel(instance);
 		
 		labels[0] = new ArrayList<Label>();
+
 		labels[0].add( originLabel );
 		
-		// Customer labels
+		// Intitialize customer labels
 		for(int i = 1; i < instanceNodes.length; i++) {
 			labels[i] = new ArrayList<Label>();
 		}
 		
 		// Customers waiting to be treated
-		Queue<Customer> E = new LinkedList<Customer>();		
+		Queue<Customer> E = new LinkedList<Customer>();	
 		E.add(instanceNodes[0]);
 		
+		// To stop the algorithm at a certain time
 		long startTime = System.currentTimeMillis();
 		long endTime = startTime + timeLimit*1000;
+		
+		// Repeat until E is empty
 		do {
 			// We choose a node in the waiting list
 			Customer currentNode = E.poll();
@@ -71,8 +68,10 @@ public class LabellingSolver {
 				
 				// We extend all currentNode labels
 				int customerId = currentNode.getId();
-				for(Label currentLabel : labels[customerId]) {
-					if( currentLabel.isReachable( currentSuccessor ) && !currentLabel.isExtended()) {
+//				for(Label currentLabel : labels[customerId]) {
+				for ( Iterator<Label> iterator = labels[customerId].iterator(); iterator.hasNext(); ) {
+					Label currentLabel = iterator.next();
+					if( !currentLabel.isExtended() && currentLabel.isReachable( currentSuccessor ) ) {
 						Label ext = currentLabel.extendLabel( currentSuccessor, this.instance );
 						extendedLabels.add(ext);
 					}
@@ -80,20 +79,18 @@ public class LabellingSolver {
 				
 				ArrayList<Label> successorLabels = labels[currentSuccessor.getId()];
 				
-//				EFF resultEFF = this.methodEFF1(successorLabels, extendedLabels);
 				boolean resultEFF = this.methodEFF2(successorLabels, extendedLabels);
-				
-//				labels[currentSuccessor.getId()] = resultEFF.getLabels();
 
 				// End EFF
-				if( !E.contains(currentSuccessor) && resultEFF ) {
-					E.add(currentSuccessor);
+				if( resultEFF ) {
+					E.remove( currentSuccessor );
+					E.add( currentSuccessor );
 				}
 			}
-			
-			labels[currentNode.getId()].stream().forEach(label -> label.setExtended(true));			
+			// Set labels to extended
+			labels[currentNode.getId()].stream().forEach( label -> label.setExtended(true) );
 		}while( !E.isEmpty() && System.currentTimeMillis() < endTime);
-
+		
 		return labels;
 	}
 	
@@ -104,145 +101,107 @@ public class LabellingSolver {
 	 * @param extendedLabels
 	 * @return
 	 */
-	public boolean methodEFF1(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
+	public boolean methodEFF2(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
 		// Flag to see if the successor labels have changed
 		boolean hasChanged = false;
-		
-		ArrayList<Label> resultLabels = new ArrayList<Label>();
-		
-		// Check if labels we have by far are dominated
-		// by the extended labels and viceversa		
-		for(int l=0; l < successorLabels.size(); l++) {
-			Label analyzingLabel = successorLabels.get(l);
-			
-			for(int f=0; f < extendedLabels.size(); f++) {
-				Label extLabel = extendedLabels.get(f);
-				if( !extLabel.isDominated() ) {
-					analyzingLabel.checkDominance(extLabel);					
-					
-					if( analyzingLabel.isDominated() ) {
-						hasChanged = true;
-						break;
-					}
-				}
-			}
-			
-			if( !analyzingLabel.isDominated() ) {
-				resultLabels.add(analyzingLabel);
-			}
-		}
-		
-		// Check dominance among extended labels		
-		for(int f=0; f < extendedLabels.size(); f++) {
-			Label extLabel1 = extendedLabels.get(f);
-			
-			if( extLabel1.isDominated() ) { continue; }
-			
-			for(int g=f+1; g < extendedLabels.size(); g++) {
-				Label extLabel2 = extendedLabels.get(g);
-				
-				if( !extLabel2.isDominated() ) {
-					extLabel1.checkDominance(extLabel2);
-				}
-				else {
-					continue;
-				}
-				
-				if( extLabel1.isDominated() ) {
-					break;
-				}
-			}
-			
-			if( !extLabel1.isDominated() ) {
-				resultLabels.add(extLabel1);
-				hasChanged = true;
-			}
-		}
-		
-		successorLabels.clear();
-		successorLabels.addAll(resultLabels);
-		
-		return hasChanged;
-	}
-	
-	private boolean methodEFF2(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
-		// Flag to see if the successor labels have changed
-		boolean hasChanged = false;
-
-		ArrayList<Label> resultLabels = new ArrayList<Label>();
-
-		// Check if labels we have by far, are dominated
-		// by the extended labels and viceversa		
-		for(Label analyzingLabel : successorLabels) {
-			for(Label extLabel : extendedLabels) {
-				// If the extended label has not been dominated yet
-				if( !extLabel.isDominated() ) {
-					boolean actualDominates = analyzingLabel.dominates(extLabel);
-					
-					// If the extended label has not been dominated, we check the opposite
-					if( !actualDominates && extLabel.dominates(analyzingLabel)) {
-						hasChanged = true;
-						break;
-					}
-				}
-			}
-			// If no extended label dominates the current label, we add it
-			if( !analyzingLabel.isDominated() ) {
-				resultLabels.add(analyzingLabel);
-			}
-		}
 
 		// Check dominance among extended labels
-		for(int f=0; f < extendedLabels.size(); f++) {
-			Label extLabel1 = extendedLabels.get(f);
-
-			if( extLabel1.isDominated() ) { continue; }
-
-			for(int g=f+1; g < extendedLabels.size(); g++) {
-				Label extLabel2 = extendedLabels.get(g);
-
-				if( !extLabel2.isDominated() ) {
-					boolean firstDominance = extLabel1.dominates(extLabel2);
-					
-					if( !firstDominance && extLabel2.dominates(extLabel1)) {
-						break;
-					}
-					
-				}else { continue; }
+		for(Label extLabel : extendedLabels ) {
+			int removed = 0;
+			for(int i  = 0; i-removed < successorLabels.size(); i++) {
+				Label label = successorLabels.get(i-removed);
+				
+				if( label.dominates(extLabel) ) {
+					break;
+				}
+				
+				if( extLabel.dominates(label) ) {
+					successorLabels.remove(i-removed);
+					hasChanged = true;
+					removed++;
+				}
 			}
-
-			if( !extLabel1.isDominated() ) {
-				resultLabels.add(extLabel1);
+			
+			if( !extLabel.isDominated() ) {
 				hasChanged = true;
+				successorLabels.add(extLabel);
 			}
 		}
-		
-		successorLabels.clear();
-		successorLabels.addAll(resultLabels);
-		
+
 		return hasChanged;
 	}
 	
 	/**
-	 * Just a dummy function for debug purposes
+	 * The following function corresponds to the EEF method presented in (Feillet D, 2004)
+	 * 
+	 * @param successorLabels
+	 * @param extendedLabels
+	 * @return
+	 */
+	public boolean methodEFF3(LinkedList<Label> successorLabels, ArrayList<Label> extendedLabels) {
+		// Flag to see if the successor labels have changed
+		boolean hasChanged = false;
+
+		// Check dominance among extended labels
+		for(Label extLabel : extendedLabels ) {
+			for ( Iterator<Label> iter = successorLabels.iterator(); iter.hasNext(); ) {
+				Label label = iter.next();
+				if( label.dominates(extLabel) ) {
+					break;
+				}
+				if( extLabel.dominates(label) ) {
+					iter.remove();
+					hasChanged = true;
+				}
+			}
+			
+			if( !extLabel.isDominated() ) {
+				hasChanged = true;
+				successorLabels.add(extLabel);
+			}
+		}
+
+		return hasChanged;
+	}
+	
+	/**
+	 * The following function corresponds to the EEF method presented in (Feillet D, 2004)
 	 * 
 	 * @param successorLabels
 	 * @param extendedLabels
 	 * @return
 	 */
 	@SuppressWarnings("unused")
-	private boolean dummyEFF(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
+	private boolean methodEFF1(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
+		// Flag to see if the successor labels have changed
 		boolean hasChanged = false;
-		
-		successorLabels.addAll(extendedLabels);
-		
-		if(!extendedLabels.isEmpty()) {
-			hasChanged = true;
+
+		// Check dominance among extended labels
+		for(Label extLabel : extendedLabels ) {
+			int removed = 0;
+			for(int i  = 0; i-removed < successorLabels.size(); i++) {
+				Label label = successorLabels.get(i-removed);
+				
+				if( label.checkDominance(extLabel) ) {
+					break;
+				}
+				
+				if( label.isDominated() ) {
+					successorLabels.remove(i-removed);
+					hasChanged = true;
+					removed++;
+				}
+			}
+			
+			if( !extLabel.isDominated() ) {
+				hasChanged = true;
+				successorLabels.add(extLabel);
+			}
 		}
-		
+
 		return hasChanged;
 	}
-	
+
 	/**
 	 * Print function for debug purposes
 	 * 
@@ -250,11 +209,11 @@ public class LabellingSolver {
 	 * @param itNumber
 	 */
 	@SuppressWarnings("unused")
-	private void displayE(ArrayList<Customer> E, int itNumber) {
+	private void displayE(Queue<Customer> E, int itNumber) {
 		System.out.print(itNumber+": {");
-		for(int e = 0; e < E.size(); e++) {
-			System.out.print(E.get(e).getId()!=6? E.get(e).getId():"Depot");
-			if(e != E.size()-1) System.out.print(", ");
+		for(Customer customer : E) {
+			System.out.print(customer.getId());
+			System.out.print(", ");
 		}
 		System.out.println("}");		
 	}

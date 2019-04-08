@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import model.ESPPRCResult;
 import model.EspprcInstance;
@@ -17,10 +18,10 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		
 		// Default options
-		int nbClients = 25;
-		int useCplex = 1;
-		int timeLimit = 600;
-		String instanceType = "R";
+		int nbClients = 50;
+		int useCplex = 0;
+		int timeLimit = 300;
+		String instanceType = "Test";
 		String directory = "./instances/solomon_"+nbClients+"/";
 		
 		// Reading arguments
@@ -38,12 +39,13 @@ public class Main {
 				else if(arg.contains("-useCplex")) {
 					useCplex = Integer.parseInt(arg.substring(10));
 				}
-				else if(arg.contains("-tiCplex")) {
-					timeLimit = Integer.parseInt(arg.substring(9));
+				else if(arg.contains("-timeLimit")) {
+					timeLimit = Integer.parseInt(arg.substring(11));
 				}
 			}
 		}
 		
+		// Reading instance option
 		String[] solomonInstances;
 		if(instanceType.equals("R")) {
 			solomonInstances = getRInstances();
@@ -53,6 +55,12 @@ public class Main {
 		}
 		else if(instanceType.equals("RC")) {
 			solomonInstances = getRCInstances();
+		}
+		else if(instanceType.equals("Test")) {
+			solomonInstances = getTestInstances();
+		}
+		else if(instanceType.equals("Test2")) {
+			solomonInstances = getTestInstances2();
 		}
 		else {
 			solomonInstances = getRInstances();
@@ -155,7 +163,7 @@ public class Main {
 		
 		writer.write( labellingResult.getCost() + "\t" );
 		writer.write( labellingResult.getTimeElapsed() + "\t" );
-		writer.write( labellingResult.getNbVisitedNodes() + "\t" );
+		writer.write( (labellingResult.getNbVisitedNodes()-1) + "\t" );
 		writer.write( labellingResult.getRoute() + "\t" );
 		writer.write( labellingResult.getNbFeasibleRoutes() + "\t" );
 		writer.write( labellingResult.getNbTotalRoutes() + "\n" );
@@ -181,7 +189,7 @@ public class Main {
 		long startTime = System.nanoTime();
 		
         ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit);
-        
+
 		long endTime = System.nanoTime();
 
     	// Label correcting algorithm has finished
@@ -191,18 +199,20 @@ public class Main {
 		long timeElapsed = endTime - startTime;
 		
     	ArrayList<Label> depotLabels = nodeLabels[nodeLabels.length - 1];
+
     	int nbFeasibleRoutes = depotLabels.size();
 		
     	Label minCostRoute = depotLabels.get(0);
-    	for(int l=1; l < nbFeasibleRoutes; l++) {
-    		if(depotLabels.get(l).getCost() < minCostRoute.getCost()) {
-    			minCostRoute = depotLabels.get(l);
+		for ( Iterator<Label> iterator = depotLabels.iterator(); iterator.hasNext(); ) {
+			Label currentLabel = iterator.next();
+    		if(currentLabel.getCost() < minCostRoute.getCost()) {
+    			minCostRoute = currentLabel;
     		}
     	}
     	
     	int nbGeneratedLabels = 0;
-    	for(int i = 0; i < nodeLabels.length; i++) {
-    		nbGeneratedLabels += nodeLabels[i].size();
+    	for(ArrayList<Label> labelList : nodeLabels) {
+    		nbGeneratedLabels += labelList.size();
     	}
     	
         System.out.println("Generated "+nbFeasibleRoutes+" routes");
@@ -239,15 +249,6 @@ public class Main {
 		instances[7] = "C108.txt";
 		instances[8] = "C109.txt";
 		
-//		instances[9] = "C201.txt";
-//		instances[10] = "C202.txt";
-//		instances[11] = "C203.txt";
-//		instances[12] = "C204.txt";
-//		instances[13] = "C205.txt";
-//		instances[14] = "C206.txt";
-//		instances[15] = "C207.txt";
-//		instances[16] = "C208.txt";
-		
 		return instances;
 	}
 	
@@ -266,18 +267,6 @@ public class Main {
 		instances[9] = "R110.txt";
 		instances[10] = "R111.txt";
 		instances[11] = "R112.txt";
-		
-//		instances[12] = "R201.txt";
-//		instances[13] = "R202.txt";
-//		instances[14] = "R203.txt";
-//		instances[15] = "R204.txt";
-//		instances[16] = "R205.txt";
-//		instances[17] = "R206.txt";
-//		instances[18] = "R207.txt";
-//		instances[19] = "R208.txt";
-//		instances[20] = "R209.txt";
-//		instances[21] = "R210.txt";
-//		instances[22] = "R211.txt";
 
 		return instances;
 	}
@@ -293,16 +282,47 @@ public class Main {
 		instances[5] = "RC106.txt";
 		instances[6] = "RC107.txt";
 		instances[7] = "RC108.txt";
-		
-//		instances[8] = "RC201.txt";
-//		instances[9] = "RC202.txt";
-//		instances[10] = "RC203.txt";
-//		instances[11] = "RC204.txt";
-//		instances[12] = "RC205.txt";
-//		instances[13] = "RC206.txt";
-//		instances[14] = "RC207.txt";
-//		instances[15] = "RC208.txt";
 
+		return instances;
+	}
+	
+	private static String[] getTestInstances() {
+		String[] instances = new String[80];
+		for(int i = 0 ; i < 10 ; i++) {
+			instances[i] = "RC103.txt";
+		}
+		for(int i = 10 ; i < 20 ; i++) {
+			instances[i] = "RC108.txt";
+		}
+		for(int i = 20 ; i < 30 ; i++) {
+			instances[i] = "C102.txt";
+		}
+		for(int i = 30 ; i < 40 ; i++) {
+			instances[i] = "R102.txt";
+		}
+		for(int i = 40 ; i < 50 ; i++) {
+			instances[i] = "R106.txt";
+		}
+		for(int i = 50 ; i < 60 ; i++) {
+			instances[i] = "R101.txt";
+		}
+		for(int i = 60 ; i < 70 ; i++) {
+			instances[i] = "C101.txt";
+		}
+		for(int i = 70 ; i < 80 ; i++) {
+			instances[i] = "RC101.txt";
+		}
+		return instances;
+	}
+	
+	private static String[] getTestInstances2() {
+		String[] instances = new String[10];
+		for(int i = 0 ; i < 5 ; i++) {
+			instances[i] = "C103.txt";
+		}
+		for(int i = 5 ; i < 10 ; i++) {
+			instances[i] = "C104.txt";
+		}
 		return instances;
 	}
 }

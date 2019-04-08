@@ -232,5 +232,9 @@ public class EspprcInstance {
 
 	public void setDuplicateOrigin(boolean duplicateOrigin) {
 		this.duplicateOrigin = duplicateOrigin;
-	}	
+	}
+	
+	public int getNbNodes() {
+		return nodes.length;
+	}
 }
