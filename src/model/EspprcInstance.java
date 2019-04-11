@@ -47,7 +47,11 @@ public class EspprcInstance {
 	public EspprcInstance() {
 	}
 	
-	public int getNbArcs() {
+	/**
+	 * Count all the possible sucessor nodes for each node
+	 * @return Number of edges in the current graph
+	 */
+	public int getNbEdges() {
 		int result = 0;
 		for(ArrayList<Customer> succesorList :  successors) {
 			result += succesorList.size();
@@ -55,7 +59,11 @@ public class EspprcInstance {
 		return result;
 	}
 	
-	public double getNbNegativeArcs() {
+	/**
+	 * Count all the successor nodes from wich the current node the cost is negative
+	 * @return Number of edges with negative cost
+	 */
+	public int getNbNegativeEdges() {
 		int result = 0;
 		for(int id = 0; id < successors.length ; id++) {
 			for(Customer successorNode : successors[id]) {
@@ -67,8 +75,13 @@ public class EspprcInstance {
 		return result;
 	}
 	
+	/**
+	 * Calculate the density for a directed simple graph with the following formula
+	 * |E|/[|V|*(|V|-1)] where |E| is the number of edges and |V| the number of nodes
+	 * @return Density of the graph
+	 */
 	public double getDensity() {
-		double cardE = this.getNbArcs();
+		double cardE = this.getNbEdges();
 		double  cardV = this.nodes.length-1;
 		return ( cardE / (cardV * (cardV - 1)) );
 	}
@@ -79,7 +92,7 @@ public class EspprcInstance {
 	 * To stock the arc costs and distance in a matrix
 	 * It ramdomly generates negative costs for the arcs
 	 */
-	public void buildArcs() {
+	public void buildEdges() {
 		int max = 20;
 		int min = 0;
 		Random rand = new Random(0);
@@ -108,7 +121,7 @@ public class EspprcInstance {
 	}
 	
 	/**
-	 * To see which arcs are allowed or forbidden
+	 * To see which edges are allowed or forbidden
 	 */
 	@SuppressWarnings("unchecked")
 	public void buildSuccessors() {
@@ -194,22 +207,22 @@ public class EspprcInstance {
 		this.nbVehicles = vehicles;
 	}
 
-	public double[][] getCost() {
+	public double[][] getCostMatrix() {
 		return cost;
 	}
-
-	public void setCost(double[][] cost) {
-		this.cost = cost;
+	
+	public double getCost(int i, int j) {
+		return cost[i][j];
 	}
 
-	public double[][] getDistance() {
+	public double[][] getDistanceMatrix() {
 		return distance;
 	}
-
-	public void setDistance(double[][] distance) {
-		this.distance = distance;
+	
+	public double getDistance(int i, int j) {
+		return distance[i][j];
 	}
-
+	
 	public double getCapacity() {
 		return capacity;
 	}
@@ -220,10 +233,6 @@ public class EspprcInstance {
 	
 	public ArrayList<Customer>[] getSuccessors() {
 		return successors;
-	}
-
-	public void setSuccessors(ArrayList<Customer>[] successors) {
-		this.successors = successors;
 	}
 	
 	public boolean isDuplicateOrigin() {

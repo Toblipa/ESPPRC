@@ -197,7 +197,7 @@ public class EspprcSolver {
 				expression.addTerm(-1.0, s[j]);
 				expression.addTerm(M, x[i][j]);
 
-				cplex.addLe(expression, M - currentNode.getServiceTime() - this.instance.getDistance()[i][j]);	
+				cplex.addLe(expression, M - currentNode.getServiceTime() - this.instance.getDistanceMatrix()[i][j]);	
 			}
 		}
 	}
@@ -314,7 +314,7 @@ public class EspprcSolver {
 		for(int i=0; i < x.length; i++) {
 			for(int j=0; j < x[i].length; j++) {
 				if(i != j) {
-					obj.addTerm(x[i][j], this.instance.getCost()[i][j]);
+					obj.addTerm(x[i][j], this.instance.getCostMatrix()[i][j]);
 				}
 			}
 		}

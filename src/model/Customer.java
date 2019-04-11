@@ -3,19 +3,41 @@ package model;
 
 public class Customer extends AbstractNode {
     
+	/**
+	 * The given node id
+	 */
     private int id;
     
+    /**
+     * The required demand on this node
+     */
     private int demand;
     
+    /**
+     * The start time of the time window
+     */
     private double start;
     
+    /**
+     * The end time of the time window
+     */
     private double end;
     
+    /**
+     * The serice time required on this node
+     */
     private double serviceTime;
     
-	// To know if it is the depot
+	/**
+	 * Flag to check if it is the last node
+	 */
 	private boolean isDepot = false;
 	
+	/**
+	 * 
+	 * @param x
+	 * @param y
+	 */
 	public Customer(double x, double y) {
 		super(x, y);
 	}

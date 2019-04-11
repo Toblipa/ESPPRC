@@ -15,16 +15,8 @@ public class Label {
 	
 	/**
 	 * The resources used until now
-	 */
-	// TODO create a Resource class
-	double[] resources;
-	
-	Resources resource;
-	
-	/**
-	 * The total cost of the route
-	 */
-	private double cost;
+	 */	
+	private Resources resources;
 	
 	/**
 	 * If it is dominated by another route
@@ -37,137 +29,20 @@ public class Label {
 	private boolean isExtended;
 	
 	/**
-	 * Number of unreachable nodes
+	 * Given an instance it creates the origin label
+	 * @param instance
 	 */
-	private int nbUnreachableNodes;
-	
-	/**
-	 * List of unreachable nodes from the current Label
-	 */
-	private boolean[] unreachableNodes;
-	
-	/**
-	 * Number of visited nodes
-	 */
-	private int nbVisitedNodes;
-	
-	/**
-	 * The nodes visited from the origin the current node
-	 */
-	private boolean[] visitationVector;
-		
-	public Label() {
-		this.resources = new double[2];
+	public Label(EspprcInstance instance) {
+		current = instance.getNode(0);		
+		resources = new Resources(instance);
 	}
 	
+	/**
+	 * Instanciates a new label on the given node
+	 * @param node
+	 */
 	public Label(Customer node) {
 		this.current = node;
-		this.resources = new double[2];
-	}
-	
-	// ===== GETTERS & SETTERS =====
-	
-	public Customer getCurrent() {
-		return current;
-	}
-
-	public void setCurrent(Customer current) {
-		this.current = current;
-	}
-
-	public Label getPreviousLabel() {
-		return previousLabel;
-	}
-
-	public void setPreviousLabel(Label previousLabel) {
-		this.previousLabel = previousLabel;
-	}
-
-	public double[] getResources() {
-		return resources;
-	}
-
-	public void setResources(double[] resource) {
-		this.resources = resource;
-	}
-
-	public double getCost() {
-		return cost;
-	}
-
-	public void setCost(double cost) {
-		this.cost = cost;
-	}
-
-	public boolean isDominated() {
-		return isDominated;
-	}
-
-	public void setDominated(boolean isDominated) {
-		this.isDominated = isDominated;
-	}
-
-	public boolean[] getVisitationVector() {
-		return visitationVector;
-	}
-
-	public void setVisitationVector(boolean[] visitationVector) {
-		this.visitationVector = visitationVector;
-	}
-
-	public boolean[] getUnreachableNodes() {
-		return unreachableNodes;
-	}
-
-	public void setUnreachableNodes(boolean[] unreachableNodes) {
-		this.unreachableNodes = unreachableNodes;
-	}
-
-	public int getNbUnreachableNodes() {
-		return nbUnreachableNodes;
-	}
-
-	public void setNbUnreachableNodes(int nbNodes) {
-		this.nbUnreachableNodes = nbNodes;
-	}
-
-	public int getNbVisitedNodes() {
-		return nbVisitedNodes;
-	}
-
-	public void setNbVisitedNodes(int nbVisitedNodes) {
-		this.nbVisitedNodes = nbVisitedNodes;
-	}
-	
-	public void addToResource(int index, double value) {
-		this.resources[index] += value;
-	}
-	
-	public void setResource(int index, double value) {
-		this.resources[index] = value;
-	}
-	
-	public Double getResource(int index) {
-		return this.resources[index];
-	}
-	
-	public Resources getRes(){
-		return resource;
-	}
-	public boolean isReachable(Customer currentSuccessor) {
-		return !this.unreachableNodes[ currentSuccessor.getId() ];
-	}
-	
-	public boolean isExtended() {
-		return isExtended;
-	}
-
-	public void setExtended(boolean isExtended) {
-		this.isExtended = isExtended;
-	}
-	
-	public void setRes(Resources resource) {
-		this.resource = resource;
 	}
 	
 	/**
@@ -183,71 +58,14 @@ public class Label {
 			return false;
 		}
 		
-		if( this.previousLabel == label.getPreviousLabel() ){
-			return true;
-		}
+		int comparison = this.resources.compareTo(label.getResources());
 		
-		boolean thisDominance = false;
-		boolean anotherDominance = false;
-		
-		double costDiff = this.cost - label.getCost();
-		
-		// We compare every resource
-		double resourceDiff = 0;
-		boolean resourceThisDominance = true;
-		boolean resourceAnotherDominance = true;
-		
-		for (int r = 0; r < this.resources.length; r++) {
-			resourceDiff = this.resources[r] - label.getResource(r);
-			
-			if(resourceThisDominance && resourceDiff > 0) {
-				resourceThisDominance = false;
-			}
-			else if(resourceAnotherDominance && resourceDiff < 0) {
-				resourceAnotherDominance = false;
-			}
-		}
-		
-		int nodesDiff = this.nbUnreachableNodes - label.getNbUnreachableNodes();
-		
-		if( costDiff <= 0 && resourceThisDominance && nodesDiff <= 0) {
-			thisDominance = true;
-		}
-		
-		if( costDiff >= 0 && resourceAnotherDominance && nodesDiff >= 0) {
-			anotherDominance = true;
-		}
-		
-		if(thisDominance && anotherDominance) {
-			return false;
-		}
-		
-		if( thisDominance ) {
-			boolean[] externalUnreachableNodes = label.getUnreachableNodes();
-			
-			for(int k = 0; k < this.unreachableNodes.length; k++) {
-				if(this.unreachableNodes[k] && !externalUnreachableNodes[k]) {
-					thisDominance = false;
-					break;
-				}
-			}
-			
-			label.setDominated( thisDominance );
-		}
-		else if( anotherDominance ) {
-			boolean[] externalUnreachableNodes = label.getUnreachableNodes();
-			
-			for(int k = 0; k < this.unreachableNodes.length; k++) {
-				if( !this.unreachableNodes[k] && externalUnreachableNodes[k] ) {
-					anotherDominance = false;
-					break;
-				}
-			}
-			
-			this.isDominated = anotherDominance;
+		if( comparison != 0 ) {
+			this.setDominated( comparison > 0 );
+			label.setDominated( comparison < 0 );
 		}
 				
-		return false;
+		return (comparison < 0 );
 	}
 	
 	/**
@@ -261,28 +79,8 @@ public class Label {
 			return false;
 		}
 		
-		if( !this.resource.lesserThan( label.getRes() ) ) {
+		if( !this.resources.lessThan( label.getResources() ) ) {
 			return false;
-		}
-		
-		// Check cost & number of unreachable nodes
-		if(this.cost > label.getCost() || this.nbUnreachableNodes > label.getNbUnreachableNodes()) {
-			return false;
-		}
-		
-		// Check resources
-		for (int r = 0; r < this.resources.length; r++) {
-			if(this.resources[r] > label.getResource(r)) {
-				return false;
-			}
-		}
-		
-		// Check unreachable nodes one by one
-		boolean[] externalUnreachableNodes = label.getUnreachableNodes();
-		for(int k = 0; k < this.unreachableNodes.length; k++) {
-			if( this.unreachableNodes[k] && !externalUnreachableNodes[k] ) {
-				return false;
-			}
 		}
 		
 		// If we have not broke, the current label dominates the other
@@ -299,76 +97,29 @@ public class Label {
 	 */
 	public Label extendLabel(Customer node, EspprcInstance instance) {
 		
-		double arcCost = instance.getCost()[current.getId()][node.getId()];
-		double arcDistance = instance.getDistance()[current.getId()][node.getId()];
-		
 		// We create a new label on the node successor
 		Label extendedLabel = new Label( node );
 		
 		// We stock the previous label
 		extendedLabel.setPreviousLabel( this );
 		
-		Resources extendedResources = this.resource.extendResources(instance, this.getCurrent(), node);
-		extendedLabel.setRes(extendedResources);
-				
-		// We add the cost
-		extendedLabel.setCost( this.cost + arcCost );
+		// We update the resources
+		Resources extendedResources = new Resources( this.resources );
+		extendedResources.extendResources( instance, this.current, node );
 		
-		// We add the resources of the label, considering we cannot visit the customer before the start time
-		if( node.getStart() > this.getResource(0) + current.getServiceTime() + arcDistance ) {
-			extendedLabel.setResource( 0, node.getStart() );
-		}
-		else {
-			extendedLabel.setResource( 0, this.getResource(0) + current.getServiceTime() + arcDistance );
-		}
-		// Add demand resource
-		extendedLabel.setResource( 1, this.getResource(1) + node.getDemand());
-		
-		// We update the visitation vector
-		extendedLabel.setVisitationVector( this.visitationVector.clone() );
-		extendedLabel.setNbVisitedNodes( this.nbVisitedNodes );
-		extendedLabel.extendVisitationVector( node );
-		
-		// We update unreachable nodes
-		boolean[] currentUnreachableNodes = this.unreachableNodes;
-		boolean[] extendedUnreachableNodes = new boolean[currentUnreachableNodes.length];
-		int extendedNbUnreachableNodes = 0;
-		
-		for(int i = 0; i < instance.getNodes().length; i++ ) {
-			if( node.isDepot() || i == node.getId()) {
-				extendedUnreachableNodes[i] = true;
-				extendedNbUnreachableNodes++;
-				continue;
-			}
-			
-			double timeToReach = extendedLabel.getResource(0) + node.getServiceTime() + instance.getDistance()[node.getId()][i];
-			if ( currentUnreachableNodes[i] ||
-					( instance.getNode(i).getEnd() < timeToReach ||
-							instance.getCapacity() < extendedLabel.getResource(1) + instance.getNode(i).getDemand()) ) {
-				extendedUnreachableNodes[i] = true;
-				extendedNbUnreachableNodes++;
-			}
-		}
-		
-		extendedLabel.setUnreachableNodes( extendedUnreachableNodes );
-		extendedLabel.setNbUnreachableNodes( extendedNbUnreachableNodes );
+		extendedLabel.setResources( extendedResources );
 				
 		return extendedLabel;
 	}
 
-	private void extendVisitationVector(Customer node) {
-		this.visitationVector[node.getId()] = true;
-		this.nbVisitedNodes++;
-	}
-
 	@Override
 	public String toString() {
-		if(this.current==null) {
+		if(this.current == null) {
 			return "Empty Label";
 		}
 		String dominated = this.isDominated?"Dominated ":"Non Dominated ";
 		return dominated + "Label [at " + current.getId() + "," +
-				" cost: " + this.cost + "]";
+				" cost: " + this.resources.getCost() + "]";
 	}
 	
 	/**
@@ -376,74 +127,65 @@ public class Label {
 	 * @return
 	 */
 	public String getRoute() {
-		if (this.current == null) return "Empty Label";
-		
+		if (current == null) return "Empty Label";
+
 		if (previousLabel == null) return "";
-		
+
 		String id = current.isDepot() ? "" : current.getId()+", ";
-		
-		return this.previousLabel.getRoute() + id;
+
+		return previousLabel.getRoute() + id;
 	}
 	
-	/**
-	 * Returns the visitation vector in form of a string
-	 * @return
-	 */
-	public String stringifyVisitationVector() {
-		String out = "[ ";
-		for(int index = 0; index < this.visitationVector.length; index++) {
-			out += this.visitationVector[index]+" ";
-		}
-		out += "]";
-		return out;
+	// ===== GETTERS & SETTERS =====
+
+	public Customer getCurrent() {
+		return current;
+	}
+
+	public Label getPreviousLabel() {
+		return previousLabel;
+	}
+
+	public void setPreviousLabel(Label previousLabel) {
+		this.previousLabel = previousLabel;
+	}
+
+	public boolean isDominated() {
+		return isDominated;
+	}
+
+	public void setDominated(boolean isDominated) {
+		this.isDominated = isDominated;
+	}
+
+	public Resources getResources(){
+		return resources;
+	}
+
+	public void setResources(Resources resource) {
+		this.resources = resource;
+	}
+
+	public double getCost() {
+		return resources.getCost();
 	}
 	
-	/**
-	 * Returns the unreachable nodes vector in form of a string
-	 * @return
-	 */
-	public String stringifyUnreachableNodes() {
-		String out = "[ ";
-		for(int index = 0; index < this.unreachableNodes.length; index++) {
-			out += this.unreachableNodes[index]+" ";
-		}
-		out += "]";
-		return out;
+	public int getNbVisitedNodes() {
+		return resources.getNbVisitedNodes();
 	}
-	
-	/**
-	 * Returns the resources utilization in form of a string
-	 * @return
-	 */
-	public String stringifyResource() {
-		String out = "[ ";
-		for(int index = 0; index < this.resources.length; index++) {
-			out += this.resources[index]+", ";
-		}
-		out += "]";
-		return out;
+
+	public boolean isReachable(Customer currentSuccessor) {
+		return resources.isReachable( currentSuccessor.getId() );
 	}
-	
-	/**
-	 * Given an instance, it returns a Label in the origin node
-	 * @param instance
-	 * @return
-	 */
-	public static Label createOriginLabel(EspprcInstance instance) {
-		Customer[] instanceNodes = instance.getNodes();
-		Label originLabel = new Label( instanceNodes[0] );
-		
-		boolean[] originUnreachableVector = new boolean[instanceNodes.length];
-		originUnreachableVector[0] = true;
-		originLabel.setUnreachableNodes(originUnreachableVector);
-		
-		boolean[] originVisitationVector = new boolean[instanceNodes.length];
-		originVisitationVector[0] = true;
-		originLabel.setVisitationVector( originVisitationVector );
-		
-		return originLabel;
+
+	public boolean isExtended() {
+		return isExtended;
 	}
-	
+
+	public void setExtended(boolean isExtended) {
+		this.isExtended = isExtended;
+	}
+
 	/**
 	 * Efficency test
 	 */

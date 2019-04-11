@@ -1,7 +1,6 @@
 package solver;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -11,6 +10,10 @@ import model.Label;
 
 
 public class LabellingSolver {
+	
+	/**
+	 * An instance containing the graph and the necessary information
+	 */
 	private EspprcInstance instance;
 	
 	/**
@@ -22,38 +25,33 @@ public class LabellingSolver {
 	}
 	
 	/**
-	 *  Corresponds to the algorithm described in (Feillet D, 2004) section 4.4
-	 *  
-	 * @return
+	 * Corresponds to the algorithm described in (Feillet D, 2004) section 4.4
+	 * @param timeLimit
+	 * @return list containg the non dominated labels generated on each node of the graph
 	 */
 	public ArrayList<Label>[] genFeasibleRoutes(int timeLimit) {
 		
-		Customer[] instanceNodes = this.instance.getNodes();
-		
 		// Initialization
 		@SuppressWarnings("unchecked")
-		ArrayList<Label>[] labels = new ArrayList[instanceNodes.length];
+		ArrayList<Label>[] labels = new ArrayList[instance.getNbNodes()];
 		
 		// Origin node
-		Label originLabel = Label.createOriginLabel(instance);
-		
+		Label originLabel = new Label( instance );
 		labels[0] = new ArrayList<Label>();
-
 		labels[0].add( originLabel );
 		
 		// Intitialize customer labels
-		for(int i = 1; i < instanceNodes.length; i++) {
+		for(int i = 1; i < instance.getNbNodes(); i++) {
 			labels[i] = new ArrayList<Label>();
 		}
 		
 		// Customers waiting to be treated
 		Queue<Customer> E = new LinkedList<Customer>();	
-		E.add(instanceNodes[0]);
+		E.add( instance.getNode(0) );
 		
 		// To stop the algorithm at a certain time
 		long startTime = System.currentTimeMillis();
 		long endTime = startTime + timeLimit*1000;
-		
 		// Repeat until E is empty
 		do {
 			// We choose a node in the waiting list
@@ -63,17 +61,15 @@ public class LabellingSolver {
 			ArrayList<Customer> nodeSuccessors = this.instance.getSuccessors()[currentNode.getId()];
 			for(Customer currentSuccessor : nodeSuccessors) {
 
-				// Set of labels extended from i to j
+				// Set of labels extended from currentNode to currentSuccessor
 				ArrayList<Label> extendedLabels = new ArrayList<Label>();
 				
 				// We extend all currentNode labels
 				int customerId = currentNode.getId();
-//				for(Label currentLabel : labels[customerId]) {
-				for ( Iterator<Label> iterator = labels[customerId].iterator(); iterator.hasNext(); ) {
-					Label currentLabel = iterator.next();
+				for(Label currentLabel : labels[customerId]) {
 					if( !currentLabel.isExtended() && currentLabel.isReachable( currentSuccessor ) ) {
-						Label ext = currentLabel.extendLabel( currentSuccessor, this.instance );
-						extendedLabels.add(ext);
+						Label extendedLabel = currentLabel.extendLabel( currentSuccessor, this.instance );
+						extendedLabels.add(extendedLabel);
 					}
 				}
 				
@@ -89,7 +85,7 @@ public class LabellingSolver {
 			}
 			// Set labels to extended
 			labels[currentNode.getId()].stream().forEach( label -> label.setExtended(true) );
-		}while( !E.isEmpty() && System.currentTimeMillis() < endTime);
+		}while( !E.isEmpty() && System.currentTimeMillis() < endTime );
 		
 		return labels;
 	}
@@ -106,58 +102,25 @@ public class LabellingSolver {
 		boolean hasChanged = false;
 
 		// Check dominance among extended labels
-		for(Label extLabel : extendedLabels ) {
+		for( Label extendedLabel : extendedLabels ) {
 			int removed = 0;
 			for(int i  = 0; i-removed < successorLabels.size(); i++) {
 				Label label = successorLabels.get(i-removed);
 				
-				if( label.dominates(extLabel) ) {
+				if( label.dominates(extendedLabel) ) {
 					break;
 				}
 				
-				if( extLabel.dominates(label) ) {
+				if( extendedLabel.dominates(label) ) {
 					successorLabels.remove(i-removed);
 					hasChanged = true;
 					removed++;
 				}
 			}
 			
-			if( !extLabel.isDominated() ) {
+			if( !extendedLabel.isDominated() ) {
 				hasChanged = true;
-				successorLabels.add(extLabel);
-			}
-		}
-
-		return hasChanged;
-	}
-	
-	/**
-	 * The following function corresponds to the EEF method presented in (Feillet D, 2004)
-	 * 
-	 * @param successorLabels
-	 * @param extendedLabels
-	 * @return
-	 */
-	public boolean methodEFF3(LinkedList<Label> successorLabels, ArrayList<Label> extendedLabels) {
-		// Flag to see if the successor labels have changed
-		boolean hasChanged = false;
-
-		// Check dominance among extended labels
-		for(Label extLabel : extendedLabels ) {
-			for ( Iterator<Label> iter = successorLabels.iterator(); iter.hasNext(); ) {
-				Label label = iter.next();
-				if( label.dominates(extLabel) ) {
-					break;
-				}
-				if( extLabel.dominates(label) ) {
-					iter.remove();
-					hasChanged = true;
-				}
-			}
-			
-			if( !extLabel.isDominated() ) {
-				hasChanged = true;
-				successorLabels.add(extLabel);
+				successorLabels.add(extendedLabel);
 			}
 		}
 
@@ -185,7 +148,7 @@ public class LabellingSolver {
 				if( label.checkDominance(extLabel) ) {
 					break;
 				}
-				
+
 				if( label.isDominated() ) {
 					successorLabels.remove(i-removed);
 					hasChanged = true;

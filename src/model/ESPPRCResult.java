@@ -45,15 +45,19 @@ public class ESPPRCResult{
 	public void setRoute(String route) {
 		this.route = route;
 	}
+	
 	public double getCost() {
 		return cost;
 	}
+	
 	public void setCost(double cost) {
 		this.cost = cost;
 	}
+	
 	public long getTimeElapsed() {
 		return timeElapsed;
 	}
+	
 	public void setTimeElapsed(long timeElapsed) {
 		this.timeElapsed = timeElapsed;
 	}

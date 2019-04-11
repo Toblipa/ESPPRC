@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import model.ESPPRCResult;
 import model.EspprcInstance;
@@ -18,7 +17,7 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		
 		// Default options
-		int nbClients = 50;
+		int nbClients = 100;
 		int useCplex = 0;
 		int timeLimit = 300;
 		String instanceType = "Test";
@@ -71,7 +70,7 @@ public class Main {
 		file.createNewFile();
 
 		// Write the titles to file
-		writeColTitles(file);
+		writeColTitles(file, useCplex == 1);
 		
 		FileWriter writer = new FileWriter(file, true);
 		
@@ -89,7 +88,7 @@ public class Main {
 			reader.read();
 			
 			// Preprocessing nodes
-			instance.buildArcs();
+			instance.buildEdges();
 			instance.buildSuccessors();
 			
 			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
@@ -101,18 +100,16 @@ public class Main {
 	        if(useCplex == 1) {
 				cplexResults[i] = solveESPPRC(instance, timeLimit);
 	        }
-	        else {
-	        	cplexResults[i] = new ESPPRCResult("",0,0,0);
-	        }
 	        
 			System.out.println("");
 			
 			labellingResults[i] = labellingAlgorithm(instance, timeLimit);
 			
 			// Log results
-			System.out.println(cplexResults[i].getRoute());
-			System.out.println(cplexResults[i].getCost());
-			
+			if(useCplex == 1) {
+				System.out.println(cplexResults[i].getRoute());
+				System.out.println(cplexResults[i].getCost());
+			}
 			System.out.println(labellingResults[i].getRoute());
 			System.out.println(labellingResults[i].getCost());
 			
@@ -125,17 +122,21 @@ public class Main {
 		writer.close();
 	}
 
-	private static void writeColTitles(File file) throws IOException {
+	private static void writeColTitles(File file, boolean useCplex) throws IOException {
 		FileWriter writer = new FileWriter(file);
+		String cplexTitles = "";
+		if(useCplex) {
+			cplexTitles = 	"Cplex Cost" + "\t" +
+							"Cplex E. Time [ms]" + "\t" +
+							"Cplex N. Visited Nodes" + "\t" +
+							"Cplex Route" + "\t";
+		}
 		
 		writer.write( "File name"+"\t" +
 				"N. Arcs" + "\t" +
 				"Density" + "\t" +
 				"% Neg. Arcs" + "\t" +
-				"Cplex Cost" + "\t" +
-				"Cplex E. Time [ms]" + "\t" +
-				"Cplex N. Visited Nodes" + "\t" +
-				"Cplex Route" + "\t" +
+				cplexTitles +
 				"Label. Cost" + "\t" +
 				"Label. E. Time [ms]" + "\t" +
 				"Label. N. Visited" + "\t" +
@@ -152,14 +153,16 @@ public class Main {
 		
 		writer.write( solomonInstance + "\t" );
 		
-		writer.write( instance.getNbArcs() + "\t" );
+		writer.write( instance.getNbEdges() + "\t" );
 		writer.write( instance.getDensity() + "\t" );
-		writer.write( ( instance.getNbNegativeArcs()/instance.getNbArcs() ) + "\t" );
+		writer.write( ( instance.getNbNegativeEdges()/instance.getNbEdges() ) + "\t" );
 		
-		writer.write( cplexResult.getCost() + "\t" );
-		writer.write( cplexResult.getTimeElapsed() + "\t" );
-		writer.write( cplexResult.getNbVisitedNodes() + "\t" );
-		writer.write( cplexResult.getRoute() + "\t" );
+		if(cplexResult != null) {
+			writer.write( cplexResult.getCost() + "\t" );
+			writer.write( cplexResult.getTimeElapsed() + "\t" );
+			writer.write( cplexResult.getNbVisitedNodes() + "\t" );
+			writer.write( cplexResult.getRoute() + "\t" );
+		}
 		
 		writer.write( labellingResult.getCost() + "\t" );
 		writer.write( labellingResult.getTimeElapsed() + "\t" );
@@ -197,27 +200,28 @@ public class Main {
         
 		// Get difference of two nanoTime values
 		long timeElapsed = endTime - startTime;
-		
+		 
+		// Get solution information
     	ArrayList<Label> depotLabels = nodeLabels[nodeLabels.length - 1];
 
     	int nbFeasibleRoutes = depotLabels.size();
 		
     	Label minCostRoute = depotLabels.get(0);
-		for ( Iterator<Label> iterator = depotLabels.iterator(); iterator.hasNext(); ) {
-			Label currentLabel = iterator.next();
+		for ( Label currentLabel : depotLabels ) {
     		if(currentLabel.getCost() < minCostRoute.getCost()) {
     			minCostRoute = currentLabel;
     		}
     	}
     	
     	int nbGeneratedLabels = 0;
-    	for(ArrayList<Label> labelList : nodeLabels) {
+    	for( ArrayList<Label> labelList : nodeLabels ) {
     		nbGeneratedLabels += labelList.size();
     	}
     	
         System.out.println("Generated "+nbFeasibleRoutes+" routes");
     	System.out.println("Algorithm has finished in "+(timeElapsed/1000000)+" milliseconds");
 		
+    	// Return
 		return new ESPPRCResult(minCostRoute.getRoute(), minCostRoute.getCost(), timeElapsed/1000000,
 				minCostRoute.getNbVisitedNodes(), nbFeasibleRoutes, nbGeneratedLabels);
 	}
