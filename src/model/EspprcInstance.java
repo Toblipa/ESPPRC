@@ -63,7 +63,7 @@ public class EspprcInstance {
 	 * Count all the successor nodes from wich the current node the cost is negative
 	 * @return Number of edges with negative cost
 	 */
-	public int getNbNegativeEdges() {
+	public double getNbNegativeEdges() {
 		int result = 0;
 		for(int id = 0; id < successors.length ; id++) {
 			for(Customer successorNode : successors[id]) {

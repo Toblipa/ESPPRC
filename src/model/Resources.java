@@ -43,7 +43,7 @@ public class Resources implements Comparable<Resources>{
 	}
 	
 	/**
-	 * Creates a copy of the given resources
+	 * Create a copy of the given resources
 	 * @param resources
 	 */
 	public Resources(Resources resources) {

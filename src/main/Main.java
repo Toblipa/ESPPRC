@@ -17,10 +17,10 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		
 		// Default options
-		int nbClients = 100;
+		int nbClients = 25;
 		int useCplex = 0;
 		int timeLimit = 300;
-		String instanceType = "Test";
+		String instanceType = "Test2";
 		String directory = "./instances/solomon_"+nbClients+"/";
 		
 		// Reading arguments
@@ -45,26 +45,105 @@ public class Main {
 		}
 		
 		// Reading instance option
-		String[] solomonInstances;
-		if(instanceType.equals("R")) {
-			solomonInstances = getRInstances();
-		}
-		else if(instanceType.equals("C")) {
-			solomonInstances = getCInstances();
-		}
-		else if(instanceType.equals("RC")) {
-			solomonInstances = getRCInstances();
-		}
-		else if(instanceType.equals("Test")) {
-			solomonInstances = getTestInstances();
-		}
-		else if(instanceType.equals("Test2")) {
-			solomonInstances = getTestInstances2();
-		}
-		else {
-			solomonInstances = getRInstances();
+		String[] solomonInstances = getSelectedInstances(instanceType);
+		
+//		runSolver(directory, instanceType, nbClients, timeLimit, useCplex, solomonInstances);
+		
+		runLabelWriter(directory, nbClients, timeLimit, solomonInstances);
+	}
+
+	private static void runLabelWriter(String directory, int nbClients, int timeLimit, String[] solomonInstances)
+			throws IOException {
+		
+		for(int i = 0; i < solomonInstances.length; i++) {
+			// Creating the instance
+			EspprcInstance instance = new EspprcInstance();
+			instance.setDuplicateOrigin(true);
+			
+			// Reading the instances
+			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
+			reader.read();
+			
+			// Preprocessing nodes
+			instance.buildEdges();
+			instance.buildSuccessors();
+			
+			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
+			
+	        // Introduction
+	        System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
+			
+	        LabellingSolver solver = new LabellingSolver(instance);
+	        
+	        // We start measuring the algorithm elapsed time
+			long startTime = System.nanoTime();
+			
+	        ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit);
+
+			long endTime = System.nanoTime();
+			
+			long timeElapsed = endTime - startTime;
+			
+			// Get solution information
+	    	ArrayList<Label> depotLabels = nodeLabels[nodeLabels.length - 1];
+	    	
+	    	Label minCostRoute = depotLabels.get(0);
+			for ( Label currentLabel : depotLabels ) {
+	    		if(currentLabel.getCost() < minCostRoute.getCost()) {
+	    			minCostRoute = currentLabel;
+	    		}
+	    	}
+			
+			// Create directory
+			String folderName = solomonInstances[i].substring(0, solomonInstances[i].length()-4);
+			folderName = folderName + "-" + nbClients;
+			File folder = new File( folderName );
+			folder.mkdirs();
+			
+			for( ArrayList<Label> labelList : nodeLabels ) {
+
+				// Create file
+				int nodeId = labelList.get(0).getCurrent().getId();
+				File file = new File(folderName + File.separator + "Node_"+nodeId + "-" + labelList.size() + ".txt");
+				file.createNewFile();
+				
+				FileWriter writer = new FileWriter(file, true);
+
+				// Write the titles to file
+				writer.write( "Cost"+"\t" +
+						"N. Nodes" + "\t" +
+						"Time" + "\t" +
+						"Demand" + "\t" +
+						"N. Unreachable" + "\t" +
+						"Route" + "\n" );
+				
+				writer.flush();
+								
+				for(Label nodeLabel : labelList) {
+					writer.write( nodeLabel.getCost() + "\t" +
+							nodeLabel.getNbVisitedNodes() + "\t" +
+							nodeLabel.getResources().getTime() + "\t" +
+							nodeLabel.getResources().getDemand() + "\t" +
+							nodeLabel.getResources().getNbUnreachableNodes() + "\t" +
+							nodeLabel.getRoute() + "\n" );
+					writer.flush();
+				}
+					    		
+	    		writer.close();
+	    	}
+			
+			// Log results
+			System.out.println(minCostRoute);
+			System.out.println(minCostRoute.getCost());
+	    	System.out.println("Algorithm has finished in "+(timeElapsed/1000000)+" milliseconds");
+			
+			System.out.println("--------------------------------------");
 		}
 		
+	}
+
+	private static void runSolver(String directory, String instanceType, int nbClients, int timeLimit, int useCplex,
+			String[] solomonInstances) throws IOException {
 		// Create the file
 		File file = new File("results_"+instanceType+"_"+nbClients+".txt");
 		file.createNewFile();
@@ -120,6 +199,31 @@ public class Main {
 		}
 		
 		writer.close();
+	}
+
+	private static String[] getSelectedInstances(String instanceType) {
+		
+		if(instanceType.equals("R")) {
+			return getRInstances();
+		}
+		
+		if(instanceType.equals("C")) {
+			return getCInstances();
+		}
+		
+		if(instanceType.equals("RC")) {
+			return getRCInstances();
+		}
+		
+		if(instanceType.equals("Test")) {
+			return getTestInstances();
+		}
+		
+		if(instanceType.equals("Test2")) {
+			return getTestInstances2();
+		}
+		
+		return getRInstances();
 	}
 
 	private static void writeColTitles(File file, boolean useCplex) throws IOException {
@@ -320,13 +424,8 @@ public class Main {
 	}
 	
 	private static String[] getTestInstances2() {
-		String[] instances = new String[10];
-		for(int i = 0 ; i < 5 ; i++) {
-			instances[i] = "C103.txt";
-		}
-		for(int i = 5 ; i < 10 ; i++) {
-			instances[i] = "C104.txt";
-		}
+		String[] instances = new String[1];
+		instances[0] = "R106.txt";
 		return instances;
 	}
 }
