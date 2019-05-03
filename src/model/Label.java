@@ -2,7 +2,7 @@ package model;
 
 import java.util.BitSet;
 
-public class Label {	
+public class Label implements Comparable<Label>{	
 	/**
 	 * The last node the label path has visited
 	 */
@@ -269,5 +269,12 @@ public class Label {
 		System.out.println("Integer Comparison: "+(totalIntegerSetTime/1000000)/nbTests);
 		System.out.println("Boolean Comparison: "+(totalBooleanSetTime/1000000)/nbTests);
 		System.out.println("BitSet Comparison: "+(totalBitSetSetTime/1000000)/nbTests);
+	}
+
+	@Override
+	public int compareTo(Label that) {
+		int comparison = this.resources.compareTo( that.getResources() );
+		
+		return comparison;
 	}
 }

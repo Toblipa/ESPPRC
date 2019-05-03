@@ -178,30 +178,45 @@ public class Resources implements Comparable<Resources>{
 		nbVisitedNodes++;
 	}
 	
+//	@Override
+//	public int compareTo(Resources that) {
+//		
+//		double costDiff = this.cost - that.getCost();		
+//				
+//		double timeDiff = this.time - that.getTime();
+//		double demandDiff = this.demand - that.getDemand();
+//		int unreachableNodesDiff = this.nbUnreachableNodes - that.getNbUnreachableNodes();
+//		
+//		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableNodesDiff <= 0);
+//		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableNodesDiff >= 0);
+//		
+//		if(thisDominance == thatDominance) {
+//			return 0;
+//		}
+//		
+//		boolean[] thatUnreachableVector = that.getUnreachableVector();
+//		for(int k = 0; k < this.unreachableVector.length; k++) {
+//			if( (thisDominance && this.unreachableVector[k] && !thatUnreachableVector[k]) || 
+//				(thatDominance && !this.unreachableVector[k] && thatUnreachableVector[k])	) {
+//				return 0;
+//			}
+//		}
+//		
+//		// -1 if costDiff is negative, 1 if it is positive
+//		return (int) Math.signum(costDiff);
+//	}
+	
 	@Override
 	public int compareTo(Resources that) {
 		
-		double costDiff = this.cost - that.getCost();		
-		double timeDiff = this.time - that.getTime();
-		double demandDiff = this.demand - that.getDemand();
-		int unreachableNodesDiff = this.nbUnreachableNodes - that.getNbUnreachableNodes();
+		double costDiff = this.getCost() - that.getCost();
 		
-		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableNodesDiff <= 0);
-		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableNodesDiff >= 0);
+		int unreachableDiff = this.getNbUnreachableNodes() - that.getNbUnreachableNodes();
+		int visitedDiff = this.getNbVisitedNodes() - that.getNbVisitedNodes();
 		
-		if(thisDominance == thatDominance) {
-			return 0;
-		}
+		double comparison = costDiff + unreachableDiff - visitedDiff;
 		
-		boolean[] thatUnreachableVector = that.getUnreachableVector();
-		for(int k = 0; k < this.unreachableVector.length; k++) {
-			if( (thisDominance && this.unreachableVector[k] && !thatUnreachableVector[k]) || 
-				(thatDominance && !this.unreachableVector[k] && thatUnreachableVector[k])	) {
-				return 0;
-			}
-		}
-		// -1 if costDiff is negative, 1 if it is positive
-		return (int) Math.signum(costDiff);
+		return (int) Math.signum(comparison);
 	}
 	
 	// ============ GETTERS =================

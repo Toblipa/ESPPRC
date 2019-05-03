@@ -29,7 +29,7 @@ public class LabellingSolver {
 	 * @param timeLimit
 	 * @return list containg the non dominated labels generated on each node of the graph
 	 */
-	public ArrayList<Label>[] genFeasibleRoutes(int timeLimit) {
+	public ArrayList<Label>[] genFeasibleRoutes(int timeLimit, int labelLimit) {
 		
 		// Initialization
 		@SuppressWarnings("unchecked")
@@ -75,7 +75,7 @@ public class LabellingSolver {
 				
 				ArrayList<Label> successorLabels = labels[currentSuccessor.getId()];
 				
-				boolean resultEFF = this.methodEFF2(successorLabels, extendedLabels);
+				boolean resultEFF = this.methodEFF2(successorLabels, extendedLabels, labelLimit);
 
 				// End EFF
 				if( resultEFF ) {
@@ -97,14 +97,14 @@ public class LabellingSolver {
 	 * @param extendedLabels
 	 * @return
 	 */
-	public boolean methodEFF2(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels) {
+	public boolean methodEFF2(ArrayList<Label> successorLabels, ArrayList<Label> extendedLabels, int labelLimit) {
 		// Flag to see if the successor labels have changed
 		boolean hasChanged = false;
 
 		// Check dominance among extended labels
 		for( Label extendedLabel : extendedLabels ) {
 			int removed = 0;
-			for(int i  = 0; i-removed < successorLabels.size(); i++) {
+			for( int i  = 0; i-removed < successorLabels.size(); i++ ) {
 				Label label = successorLabels.get(i-removed);
 				
 				if( label.dominates(extendedLabel) ) {
@@ -120,13 +120,39 @@ public class LabellingSolver {
 			
 			if( !extendedLabel.isDominated() ) {
 				hasChanged = true;
-				successorLabels.add(extendedLabel);
+				addToList(successorLabels, extendedLabel);
+			}
+		}
+				
+		if( labelLimit > 0 && successorLabels.size() > labelLimit ) {
+			for( int i=0 ; i < successorLabels.size() - labelLimit; i++ ) {
+//				int removeIndex = 0;
+//				int removeIndex = (int) successorLabels.size()/2;
+				int removeIndex = successorLabels.size()-1;
+				successorLabels.remove( removeIndex );
 			}
 		}
 
 		return hasChanged;
 	}
 	
+	/**
+	 * Add label to list following comparison rules
+	 * @param successorLabels
+	 * @param extendedLabel
+	 */
+	private void addToList(ArrayList<Label> successorLabels, Label extendedLabel) {		
+		for( int i=0; i < successorLabels.size(); i++ ) {
+			int comparison = successorLabels.get(i).compareTo(extendedLabel);
+			if(comparison  > 0) {
+				successorLabels.add(i, extendedLabel);
+				return;
+			}
+		}
+		
+		successorLabels.add(extendedLabel);
+	}
+
 	/**
 	 * The following function corresponds to the EEF method presented in (Feillet D, 2004)
 	 * 
