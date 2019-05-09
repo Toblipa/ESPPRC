@@ -3,6 +3,11 @@ package model;
 import java.util.ArrayList;
 import java.util.Random;
 
+/**
+ * Represntatio of a routing instance
+ * @author pablo
+ *
+ */
 public class EspprcInstance {
 	
 	/**

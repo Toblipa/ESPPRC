@@ -1,4 +1,5 @@
 /bin/
 *.log
 *.lp
+*.csv
 results_*
