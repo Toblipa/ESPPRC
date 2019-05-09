@@ -42,6 +42,11 @@ public class EspprcInstance {
 	private boolean duplicateOrigin;
 	
 	/**
+	 * To identify the instance
+	 */
+	private String name;
+	
+	/**
 	 * Default constructor
 	 */
 	public EspprcInstance() {
@@ -89,10 +94,12 @@ public class EspprcInstance {
 	// ===== PREPROCESSING NODES =====
 	
 	/**
-	 * To stock the arc costs and distance in a matrix
-	 * It ramdomly generates negative costs for the arcs
+	 * To stock the edge costs and distance in a matrix
+	 * It ramdomly generates negative costs for the edges if simulate is active
+	 * @param simulate
 	 */
-	public void buildEdges() {
+	public void buildEdges(boolean simulate) {
+		// For simulation purposes
 		int max = 20;
 		int min = 0;
 		Random rand = new Random(0);
@@ -109,6 +116,7 @@ public class EspprcInstance {
             	if(i != j && i != nbNodes-1) {
             		double euclidianDistance = this.getNodes()[i].distance(this.getNodes()[j]);
             		int randomInt = rand.nextInt(max - min + 1) + min;
+            		if( !simulate ) { randomInt = 0; }
             		
                 	this.cost[i][j] = ( euclidianDistance * costFactor) - randomInt;
                     this.distance[i][j] = euclidianDistance * timeFactor;
@@ -157,8 +165,20 @@ public class EspprcInstance {
 	}
 	
 	/**
-	 * For debug purposes
-	 * @param successors
+	 * Given the dual values, it updates the cost of an edge
+	 * for the VRPTW subproblem
+	 * @param pi
+	 */
+	public void updateDualValues(double[] pi) {
+        for (int i = 1; i < this.getNbNodes()-1; i++) {
+            for (int j = 0; j < this.getNbNodes(); j++) {
+          	  this.cost[i][j] = this.distance[i][j] - pi[i];
+            }
+        }
+	}
+	
+	/**
+	 * Print the successors of every node
 	 */
 	@SuppressWarnings("unused")
 	private void printSuccessors() {
@@ -172,8 +192,7 @@ public class EspprcInstance {
 	}
 	
 	/**
-	 * For debug purposes
-	 * @param cost
+	 * Print the edge cost matrix
 	 */
 	@SuppressWarnings("unused")
 	private void printCostMatrix() {
@@ -245,5 +264,13 @@ public class EspprcInstance {
 	
 	public int getNbNodes() {
 		return nodes.length;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
 	}
 }

@@ -52,6 +52,7 @@ public class LabellingSolver {
 		// To stop the algorithm at a certain time
 		long startTime = System.currentTimeMillis();
 		long endTime = startTime + timeLimit*1000;
+		boolean inTime = true;
 		// Repeat until E is empty
 		do {
 			// We choose a node in the waiting list
@@ -85,7 +86,11 @@ public class LabellingSolver {
 			}
 			// Set labels to extended
 			labels[currentNode.getId()].stream().forEach( label -> label.setExtended(true) );
-		}while( !E.isEmpty() && System.currentTimeMillis() < endTime );
+			
+			if( timeLimit > 0 ) {
+				inTime = System.currentTimeMillis() < endTime;
+			}
+		}while( !E.isEmpty() && inTime );
 		
 		return labels;
 	}

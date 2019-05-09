@@ -111,6 +111,62 @@ public class Label implements Comparable<Label>{
 				
 		return extendedLabel;
 	}
+	
+	/**
+	 * Returns the path in form of a string
+	 * @return
+	 */
+	public String getRoute() {
+		if (current == null) return "Empty Label";
+
+		if (previousLabel == null) return "";
+		
+		Customer prevNode = previousLabel.getCurrent();
+		
+		if (prevNode.getId() == 0) return "";
+
+
+		String id = current.isDepot() ? prevNode.getId()+"" : prevNode.getId()+", ";
+
+		return previousLabel.getRoute() + id;
+	}
+	
+	/**
+	 * Returns the total distance of the path
+	 * @param instance
+	 * @return
+	 */
+	public double getRouteDistance(EspprcInstance instance) {
+		if (current == null) return 0;
+
+		if (previousLabel == null) return 0;
+		
+		int curNode = current.getId();
+		int prevNode = previousLabel.getCurrent().getId();
+
+		return previousLabel.getRouteDistance(instance) + instance.getDistance(prevNode, curNode);
+	}
+	
+	/**
+	 * Check if both paths are equal
+	 * @param route
+	 * @return
+	 */
+	public boolean isEqual(Label route) {
+		if( current.getId() == route.getCurrent().getId() ) {
+			if(previousLabel == route.getPreviousLabel()) {
+				return true;
+			}
+			else if( previousLabel == null && route.getPreviousLabel() == null) {
+				return true;
+			}
+			else if( previousLabel != null && route.getPreviousLabel() != null) {
+				return previousLabel.isEqual(route.getPreviousLabel());
+			}
+			return false;
+		}
+		return false;
+	}
 
 	@Override
 	public String toString() {
@@ -122,18 +178,11 @@ public class Label implements Comparable<Label>{
 				" cost: " + this.resources.getCost() + "]";
 	}
 	
-	/**
-	 * Returns the path in form of a string
-	 * @return
-	 */
-	public String getRoute() {
-		if (current == null) return "Empty Label";
-
-		if (previousLabel == null) return "";
-
-		String id = current.isDepot() ? "" : current.getId()+", ";
-
-		return previousLabel.getRoute() + id;
+	@Override
+	public int compareTo(Label that) {
+		int comparison = this.resources.compareTo( that.getResources() );
+		
+		return comparison;
 	}
 	
 	// ===== GETTERS & SETTERS =====
@@ -174,8 +223,16 @@ public class Label implements Comparable<Label>{
 		return resources.getNbVisitedNodes();
 	}
 
-	public boolean isReachable(Customer currentSuccessor) {
-		return resources.isReachable( currentSuccessor.getId() );
+	public boolean isVisited(Customer node) {
+		return resources.isVisited( node.getId() );
+	}
+	
+	public boolean isVisited(int nodeId) {
+		return resources.isVisited( nodeId );
+	}
+	
+	public boolean isReachable(Customer node) {
+		return resources.isReachable( node.getId() );
 	}
 
 	public boolean isExtended() {
@@ -269,12 +326,5 @@ public class Label implements Comparable<Label>{
 		System.out.println("Integer Comparison: "+(totalIntegerSetTime/1000000)/nbTests);
 		System.out.println("Boolean Comparison: "+(totalBooleanSetTime/1000000)/nbTests);
 		System.out.println("BitSet Comparison: "+(totalBitSetSetTime/1000000)/nbTests);
-	}
-
-	@Override
-	public int compareTo(Label that) {
-		int comparison = this.resources.compareTo( that.getResources() );
-		
-		return comparison;
 	}
 }

@@ -14,17 +14,17 @@ public class Resources implements Comparable<Resources>{
 	private int nbVisitedNodes;
 	
 	/**
-	 * The nodes visited from the origin the current node
+	 * Nodes visited from the origin the current node
 	 */
 	private boolean[] visitationVector;
 
 	/**
-	 * The number of unreachable nodes
+	 * Number of unreachable nodes
 	 */
 	private int nbUnreachableNodes;
 	
 	/**
-	 * A vector showing which nodes are unreachable (true) and those who are not (false)
+	 * Vector showing which nodes are unreachable (true) and those who are not (false)
 	 */
 	private boolean[] unreachableVector;
 
@@ -173,22 +173,30 @@ public class Resources implements Comparable<Resources>{
 		}
 	}
 	
+	/**
+	 * Extend visitation vector to given node
+	 * @param currentNode
+	 */
 	private void updateVisitationVector(Customer currentNode) {
 		visitationVector[currentNode.getId()] = true;
 		nbVisitedNodes++;
 	}
 	
-//	@Override
-//	public int compareTo(Resources that) {
-//		
-//		double costDiff = this.cost - that.getCost();		
-//				
+	@Override
+	public int compareTo(Resources that) {
+		
+		double costDiff = this.getCost() - that.getCost();
+		
+		int unreachableDiff = this.getNbUnreachableNodes() - that.getNbUnreachableNodes();
+		int visitedDiff = this.getNbVisitedNodes() - that.getNbVisitedNodes();
+		
+		double comparison = costDiff; //+ unreachableDiff - visitedDiff;
+		
 //		double timeDiff = this.time - that.getTime();
 //		double demandDiff = this.demand - that.getDemand();
-//		int unreachableNodesDiff = this.nbUnreachableNodes - that.getNbUnreachableNodes();
 //		
-//		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableNodesDiff <= 0);
-//		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableNodesDiff >= 0);
+//		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableDiff <= 0);
+//		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableDiff >= 0);
 //		
 //		if(thisDominance == thatDominance) {
 //			return 0;
@@ -201,25 +209,11 @@ public class Resources implements Comparable<Resources>{
 //				return 0;
 //			}
 //		}
-//		
-//		// -1 if costDiff is negative, 1 if it is positive
-//		return (int) Math.signum(costDiff);
-//	}
-	
-	@Override
-	public int compareTo(Resources that) {
-		
-		double costDiff = this.getCost() - that.getCost();
-		
-		int unreachableDiff = this.getNbUnreachableNodes() - that.getNbUnreachableNodes();
-		int visitedDiff = this.getNbVisitedNodes() - that.getNbVisitedNodes();
-		
-		double comparison = costDiff + unreachableDiff - visitedDiff;
 		
 		return (int) Math.signum(comparison);
 	}
 	
-	// ============ GETTERS =================
+	// ============ GETTERS & SETTERS =================
 	
 	public double getCost() {
 		return cost;
@@ -247,6 +241,10 @@ public class Resources implements Comparable<Resources>{
 	
 	public boolean[] getVisitationVector() {
 		return visitationVector;
+	}
+	
+	public boolean isVisited(int id) {
+		return visitationVector[id];
 	}
 
 	public void setVisitationVector(boolean[] visitationVector) {

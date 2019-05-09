@@ -1,7 +1,7 @@
 
 package model;
 
-public class Customer extends AbstractNode {
+public class Customer extends AbstractNode implements Comparable<Customer>{
     
 	/**
 	 * The given node id
@@ -105,4 +105,13 @@ public class Customer extends AbstractNode {
         double dy = this.getY() - p.getY();
         return Math.sqrt(dx*dx + dy*dy);
     }
+
+	@Override
+	public int compareTo(Customer that) {
+		if ( isDepot ) { return 1; }
+		if ( that.isDepot() ) { return -1; }
+		
+		double comparison = this.start - that.getStart();
+		return (int) Math.signum(comparison);
+	}
 }

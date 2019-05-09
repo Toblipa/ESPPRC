@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import model.ESPPRCResult;
 import model.EspprcInstance;
 import model.Label;
+import model.VRPTWResult;
 import reader.SolomonReader;
 import solver.EspprcSolver;
 import solver.LabellingSolver;
@@ -18,12 +19,13 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		
 		// Default options
-		int nbClients = 100;
+		int nbClients = 50;
 		int useCplex = 0;
-		int timeLimit = 300;
-		int labelLimit = 1000;
-		String instanceType = "Test2";
+		int timeLimit = 600;
+		int labelLimit = 0;
+		String instanceType = "C";
 		String directory = "./instances/solomon_"+nbClients+"/";
+		String problem = "Master";
 		
 		// Reading arguments
 		if(args.length  > 0) {
@@ -46,17 +48,28 @@ public class Main {
 				else if(arg.contains("-labelLimit")) {
 					labelLimit = Integer.parseInt(arg.substring(12));
 				}
+				else if(arg.contains("-problem")) {
+					problem = arg.substring(9);
+				}
 			}
 		}
 		
 		// Reading instance option
 		String[] solomonInstances = getSelectedInstances(instanceType);
 		
-		runPricingSolver(directory, instanceType, nbClients, timeLimit, labelLimit, useCplex, solomonInstances);
-		
-//		runMasterSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances);
-		
-//		runLabelWriter(directory, nbClients, timeLimit, labelLimit, solomonInstances);
+		switch( problem.toUpperCase() ) {
+			case "MASTER":
+				runMasterSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances, true);
+				break;
+			case "PRICING":
+				runPricingSolver(directory, instanceType, nbClients, timeLimit, labelLimit, useCplex, solomonInstances);
+				break;
+			case "LABEL":
+				runLabelWriter(directory, nbClients, timeLimit, labelLimit, solomonInstances);
+				break;
+			default:
+				System.err.println("No problem given");
+		}
 	}
 	
 	/**
@@ -67,39 +80,59 @@ public class Main {
 	 * @param timeLimit
 	 * @param labelLimit
 	 * @param solomonInstances
+	 * @param writeResults
+	 * @throws IOException 
 	 */
 	@SuppressWarnings("unused")
 	private static void runMasterSolver(String directory, String instanceType, int nbClients, int timeLimit,
-			int labelLimit, String[] solomonInstances) {
-		
-				// Stock results in a list
-				ESPPRCResult[] labellingResults = new ESPPRCResult[solomonInstances.length];
-				
-				for(int i = 0; i < solomonInstances.length; i++) {
-					// Creating the instance
-					EspprcInstance instance = new EspprcInstance();
-					instance.setDuplicateOrigin(true);
-					
-					// Reading the instances
-					SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
-					reader.read();
-					
-					// Preprocessing nodes
-					instance.buildEdges();
-					instance.buildSuccessors();
-					
-					System.out.println("\n>>> Solving instance "+solomonInstances[i]);
-					
-			        // Introduction
-			        System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
-			        
-					System.out.println("");
-					
-					solveMasterProblem(instance, timeLimit, labelLimit);
-					
-					System.out.println("--------------------------------------");
+			int labelLimit, String[] solomonInstances, boolean writeResults) throws IOException {
 
-				}				
+		// Stock results in a list
+		VRPTWResult[] labellingResults = new VRPTWResult[solomonInstances.length];
+
+		File file = new File("results_vrptw_"+instanceType+"_"+nbClients+".csv");
+		file.createNewFile();
+
+		writeMasterTitles(file);
+
+		FileWriter writer = new FileWriter(file, true);
+
+		for(int i = 0; i < solomonInstances.length; i++) {
+			// Creating the instance
+			EspprcInstance instance = new EspprcInstance();
+			instance.setDuplicateOrigin(true);
+
+			// Reading the instances
+			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
+			reader.read();
+
+			// Preprocessing nodes
+			instance.buildEdges(false);
+			instance.buildSuccessors();
+			instance.setName( solomonInstances[i].substring(0, solomonInstances[i].length() - 4) );
+
+			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
+
+			// Introduction
+			System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
+
+			System.out.println("");
+			VrptwSolver mp = new VrptwSolver(instance);
+
+			long startTime = System.nanoTime();
+
+			VRPTWResult result = mp.startColumnGeneration(timeLimit, labelLimit, writeResults);
+
+			long endTime = System.nanoTime();
+			long timeElapsed = endTime - startTime;
+
+			System.out.println("--------------------------------------");
+
+			writeMasterResult(writer, solomonInstances[i], instance, result, timeElapsed/1000000);
+
+		}
+		
+		writer.close();
 	}
 
 	/**
@@ -112,7 +145,6 @@ public class Main {
 	 * @param solomonInstances
 	 * @throws IOException
 	 */
-	@SuppressWarnings("unused")
 	private static void runLabelWriter(String directory, int nbClients, int timeLimit, int labelLimit, String[] solomonInstances)
 			throws IOException {
 		
@@ -126,17 +158,16 @@ public class Main {
 			reader.read();
 			
 			// Preprocessing nodes
-			instance.buildEdges();
+			instance.buildEdges(true);
 			instance.buildSuccessors();
 			
-			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
-			
 	        // Introduction
-	        System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
+			System.out.println("\n>>> Solving instance " + solomonInstances[i] + "\n" +
+					"Solving the instance for " + instance.getNodes().length+" nodes");
 			
 	        LabellingSolver solver = new LabellingSolver(instance);
 	        
-	        // We start measuring the algorithm elapsed time
+	        // We measure the algorithm elapsed time
 			long startTime = System.nanoTime();
 	        ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit, labelLimit);
 			long endTime = System.nanoTime();
@@ -164,7 +195,7 @@ public class Main {
 				int nodeId = labelList.get(0).getCurrent().getId();
 
 				// Create file
-				File file = new File(folderName + File.separator + "Node_"+nodeId + "-" + labelList.size() + ".txt");
+				File file = new File(folderName + File.separator + "Node_"+nodeId + "-" + labelList.size() + ".csv");
 				file.createNewFile();
 				
 				FileWriter writer = new FileWriter(file, true);
@@ -176,9 +207,9 @@ public class Main {
 						"Demand" + "\t" +
 						"N. Unreachable" + "\t" +
 						"Route" + "\n" );
-				
 				writer.flush();
-								
+				
+				// Write every label
 				for(Label nodeLabel : labelList) {
 					writer.write( nodeLabel.getCost() + "\t" +
 							nodeLabel.getNbVisitedNodes() + "\t" +
@@ -188,7 +219,8 @@ public class Main {
 							nodeLabel.getRoute() + "\n" );
 					writer.flush();
 				}
-					    		
+				
+				writer.write("Total"+"\t"+labelList.size());
 	    		writer.close();
 	    	}
 			
@@ -217,11 +249,11 @@ public class Main {
 	private static void runPricingSolver(String directory, String instanceType, int nbClients, int timeLimit, int labelLimit,
 			int useCplex, String[] solomonInstances) throws IOException {
 		// Create the file
-		File file = new File("results_"+instanceType+"_"+nbClients+".txt");
+		File file = new File("results_"+instanceType+"_"+nbClients+".csv");
 		file.createNewFile();
 
 		// Write the titles to file
-		writeColTitles(file, useCplex == 1);
+		writePricingTitles(file, useCplex == 1);
 		
 		FileWriter writer = new FileWriter(file, true);
 		
@@ -239,13 +271,12 @@ public class Main {
 			reader.read();
 			
 			// Preprocessing nodes
-			instance.buildEdges();
+			instance.buildEdges(true);
 			instance.buildSuccessors();
 			
-			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
-			
 	        // Introduction
-	        System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
+			System.out.println("\n>>> Solving instance "+solomonInstances[i] + "\n" +
+					"Solving the instance for " + instance.getNodes().length + " nodes");
 	        
 			// Solving
 	        if(useCplex == 1) {
@@ -267,23 +298,10 @@ public class Main {
 			System.out.println("--------------------------------------");
 			
 			// Write results in a file
-			writeResults(writer, solomonInstances[i], instance, cplexResults[i], labellingResults[i]);
+			writePricingResults(writer, solomonInstances[i], instance, cplexResults[i], labellingResults[i]);
 		}
 		
 		writer.close();
-	}
-	
-	/**
-	 * Given an instance, it solves the Master Problem through a Branch and Price algorithm 
-	 * @param instance
-	 * @param timeLimit
-	 * @param labelLimit
-	 */
-	private static void solveMasterProblem(EspprcInstance instance, int timeLimit, int labelLimit) {
-		
-		VrptwSolver mp = new VrptwSolver(instance);
-		
-		mp.startColumnGeneration(timeLimit, labelLimit);
 	}
 	
 	/**
@@ -313,16 +331,16 @@ public class Main {
 			return getTestInstances2();
 		}
 		
-		return getRInstances();
+		return getInstace(instanceType);
 	}
-	
+
 	/**
 	 * Writes the first line of a result file containing the column titles
 	 * @param file
 	 * @param useCplex
 	 * @throws IOException
 	 */
-	private static void writeColTitles(File file, boolean useCplex) throws IOException {
+	private static void writePricingTitles(File file, boolean useCplex) throws IOException {
 		FileWriter writer = new FileWriter(file);
 		String cplexTitles = "";
 		if(useCplex) {
@@ -345,7 +363,6 @@ public class Main {
 				"Label. N. Generated Routes" + "\n" );
 		
 		writer.close();
-		
 	}
 	
 	/**
@@ -357,7 +374,7 @@ public class Main {
 	 * @param labellingResult
 	 * @throws IOException
 	 */
-	private static void writeResults(FileWriter writer, String solomonInstance, EspprcInstance instance,
+	private static void writePricingResults(FileWriter writer, String solomonInstance, EspprcInstance instance,
 			ESPPRCResult cplexResult, ESPPRCResult labellingResult) throws IOException {
 		
 		writer.write( solomonInstance + "\t" );
@@ -382,6 +399,61 @@ public class Main {
 		
 		writer.flush();
 		
+	}
+	
+	/**
+	 * 
+	 * @param file
+	 * @throws IOException
+	 */
+	private static void writeMasterTitles(File file) throws IOException {
+		FileWriter writer = new FileWriter(file);
+		
+		writer.write( "File name"+"\t" +
+		
+				"N. Arcs" + "\t" +
+				"Density" + "\t" +
+				
+				"Objective" + "\t" +
+				"E. Time [ms]" + "\t" +
+				"Decision Var. Sum" + "\t" +
+				"Solution Set" + "\t" +
+				"N. Intit. Routes" + "\t" +
+				"N. Gen. Routes" + "\t" +
+				"N. Iterations" + "\t" + 
+				"Reduced Cost" + "\n" );
+		
+		writer.close();
+		
+	}
+	
+	/**
+	 * 
+	 * @param writer
+	 * @param instanceName
+	 * @param instance
+	 * @param result
+	 * @param timeElapsed
+	 * @throws IOException
+	 */
+	private static void writeMasterResult(FileWriter writer, String instanceName, EspprcInstance instance, VRPTWResult result, long timeElapsed)
+			throws IOException {
+		
+		writer.write( instanceName + "\t" );
+		
+		writer.write( instance.getNbEdges() + "\t" );
+		writer.write( instance.getDensity() + "\t" );
+
+		writer.write( result.getObjective() + "\t" );
+		writer.write( timeElapsed + "\t" );
+		writer.write( result.getxSum() + "\t" );
+		writer.write( result.getRoutes().size() + "\t" );
+		writer.write( result.getInitialRoutes() + "\t" );
+		writer.write( result.getGeneratedRoutes() + "\t" );
+		writer.write( result.getIterations() + "\t" );
+		writer.write( result.getReducedCost() + "\n" );
+		
+		writer.flush();
 	}
 
 	/**
@@ -529,10 +601,16 @@ public class Main {
 	}
 	
 	private static String[] getTestInstances2() {
+		String[] instances = new String[3];
+		instances[0] = "R102.txt";
+		instances[1] = "R104.txt";
+		instances[2] = "RC104.txt";
+		return instances;
+	}
+	
+	private static String[] getInstace(String instanceType) {
 		String[] instances = new String[1];
-		instances[0] = "R106.txt";
-//		instances[1] = "R107.txt";
-//		instances[2] = "R108.txt";
+		instances[0] = instanceType+".txt";
 		return instances;
 	}
 }
