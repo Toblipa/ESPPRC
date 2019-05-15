@@ -6,11 +6,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import ilog.concert.IloColumn;
+import ilog.concert.IloConversion;
 import ilog.concert.IloException;
 import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumVar;
+import ilog.concert.IloNumVarType;
 import ilog.concert.IloObjective;
 import ilog.concert.IloRange;
 import ilog.cplex.IloCplex;
@@ -37,25 +40,33 @@ public class VrptwSolver {
 	private IloCplex cplex;
 	
 	/**
+	 * List of columns generated during the resolution of the VRPTW
+	 */
+	private ArrayList<Label> columns;
+	
+	/**
 	 * Initialize the solver with an ESPPRC instance
 	 * @param instance
 	 */
 	public VrptwSolver(EspprcInstance instance) {
 		this.instance = instance;
+		this.columns = new ArrayList<Label>();
 	}
 	
 	/**
 	 * 
 	 * @param timeLimit
 	 * @param labelLimit
-	 * @param writeResult
+	 * @param writeColumns
+	 * @param writeDuals
 	 * @return
 	 */
-	public VRPTWResult startColumnGeneration(int timeLimit, int labelLimit, boolean writeResult) {
+	public VRPTWResult runColumnGeneration(int timeLimit, int labelLimit, boolean writeColumns, boolean writeDuals) {
         try {
             cplex = new IloCplex();
             
-            double gap = -1e-8;
+            // Small gap for reduced cost
+            double costGap = -1e-8;
             // Vehicle float
             int U = instance.getVehicles();
             // A large number
@@ -66,126 +77,165 @@ public class VrptwSolver {
             //		sum_{r_k \in \Omega} {x_k} - e <= U, (cc1)
             //		e >= 0. (cc2)
 			
-    		// We create the necessary parameters and variables
+    		// Decision variables
 			ArrayList<IloNumVar> x = new ArrayList<IloNumVar>();
-    		IloNumVar epsilon = cplex.numVar( 0, Double.MAX_VALUE, "epsilon");
+    		IloNumVar extraVehicles = cplex.numVar( 0, Double.MAX_VALUE, "extraVehicles");
 
             // > Objective
 			IloLinearNumExpr expression = cplex.linearNumExpr();
-			expression.addTerm(M, epsilon);
+			expression.addTerm(M, extraVehicles);
 
-            IloObjective obj = cplex.addMinimize(expression);
+            IloObjective objective = cplex.addMinimize(expression);
             
             // > Constraints
-    		IloRange[] contn = new IloRange[instance.getNbNodes()];
-    		contn[0] = cplex.addRange(1, Double.MAX_VALUE);
-    		contn[instance.getNbNodes()-1] = cplex.addRange(1, Double.MAX_VALUE);
-    		for(int  i = 1; i < instance.getNbNodes()-1; i++) {
-    			contn[i] = cplex.addRange(1, 1);
-//    			contn[i] = cplex.addRange(1, Double.MAX_VALUE);
-    		}
-    		 
-    		expression = cplex.linearNumExpr();
-    		expression.addTerm(-1, epsilon);
-    		IloRange contc = cplex.addRange(-Double.MAX_VALUE, expression, U);
-            
-    		ArrayList<Label> allColumns = new ArrayList<Label>();
+            // Node constraints
+    		IloRange[] nodeConstraints = getNodesConstraints(true); 
     		
+    		// Capacity constraint
+    		expression = cplex.linearNumExpr();
+    		expression.addTerm(-1, extraVehicles);
+    		IloRange capConstraint = cplex.addRange(-Double.MAX_VALUE, expression, U);
+                		
     		// > Add initial columns
     		ArrayList<Label> initialCols = getInitialCols();
-    		ArrayList<Label> defaultCols = getDefaultCols();
-    		initialCols.addAll(defaultCols);
-          
-    		for(Label route : initialCols) {
-    			addColumn(route, x, obj, contn, contc);
-    		}
+    		addColumns(initialCols, x, objective, nodeConstraints, capConstraint);
     		
-            allColumns.addAll(initialCols);
+    		// Write dual values		
+			FileWriter writer = getDualValuesFile(writeDuals);
             
-            Label lastAddedRoute = null;
-            int lastIteration = 0;
+            // Time measure
+    		long endTime = System.currentTimeMillis() + timeLimit*1000;
             
-    		long startTime = System.currentTimeMillis();
-    		long endTime = startTime + timeLimit*1000;
-    		boolean inTime = true;
-            for(int iteration = 0; iteration < 100; iteration++) {
-            	
-                // ======================== Solve Master Problem ==============================
+            // Pricing problem parameters
+    		int maxLabels = labelLimit;
+    		int SPTimeLimit = timeLimit;
+    		Label minCostRoute = initialCols.get(0);
+    		
+    		// > Start column generation loop
+    		int iteration = 0;
+            do {
+            	iteration++;
+                // ======================== Solve Relaxed Master Problem ==============================
 	            cplex.solve();
-	            System.out.println("Obj : " + cplex.getObjValue());
+	            System.out.println("Objective: " + cplex.getObjValue());
 	            
-	            // Get dual values            
-	            double[] pi = cplex.getDuals(contn);
-	            instance.updateDualValues(pi);
+	            // Get dual values        
+	            instance.updateDualValues( cplex.getDuals(nodeConstraints) );
+	            
+	            // Write down dual values
+	            writeDualValues(writer, nodeConstraints);
             
                 // ======================== Solve Subproblem ==============================
-	            ArrayList<Label> newRoutes = getNewColumns(timeLimit, labelLimit);
-	            Label minCostRoute = newRoutes.get(0);
-	            
-				if( timeLimit > 0 ) {
-					inTime = System.currentTimeMillis() < endTime;
-				}
-				
-                // ======================== Add column ==============================
-        		if( minCostRoute.getCost() > gap || !inTime ) {
-        			System.out.println("Stopped at iteration " + iteration);
-        			System.out.println("With generated route " + minCostRoute.getRoute());
-        			System.out.println(minCostRoute);
-        			
-        			lastIteration = iteration;
-            		lastAddedRoute = minCostRoute;
-        			
-            		break;
-        		}
         		
-//        		if( labelLimit > 0 && minCostRoute.getCost() > -5 ) {
-//        			labelLimit = 0;
-//        		}
+	            // Update maximum label quantity for the pricing problem
+        		if ( iteration > 1 && minCostRoute.getCost() > costGap && maxLabels > 0) {
+        			maxLabels = 0;
+        		}
+        		else if( maxLabels == 0 ) {
+        			maxLabels = labelLimit;
+        		}
+	            
+	            ArrayList<Label> newRoutes = getNewColumns(SPTimeLimit, maxLabels);
+	            minCostRoute = newRoutes.get(0);
+	            
+	            // Add columns
+    			addColumns(newRoutes, x, objective, nodeConstraints, capConstraint);
         		
     			System.out.println("Iteration nº " + iteration);
     			System.out.println("Generated route " + minCostRoute.getRoute());
-    			System.out.println(minCostRoute);
-        		        		
-        		for(Label route : newRoutes) {
-        			allColumns.add(route);
-        			addColumn(route, x, obj, contn, contc);
-        		}
-        		
-        		lastAddedRoute = minCostRoute;
-            }
+    			System.out.println("With reduced cost " + minCostRoute.getCost());
+    			
+            }while( (maxLabels > 0 || minCostRoute.getCost() < costGap) && System.currentTimeMillis() < endTime );
             
-            ArrayList<Label> solution = null;
-            double xSum = 0;
-			try {
-				solution = getSolution( x, allColumns, writeResult );
-				xSum = getSum( x );
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+            if(writeDuals) {
+            	writer.close();
+            }
+
+            // Relaxed solution information
+			cplex.solve();
+			
+            ArrayList<Label> relaxedSolution = getSolutionSet( x, writeColumns );
+            double xSum = getSum( x );
+            double lowerBound = cplex.getObjValue();
     		
-            VRPTWResult result = new VRPTWResult(solution,
-            		cplex.getObjValue(),
+            VRPTWResult result = new VRPTWResult(relaxedSolution,
+            		lowerBound,
             		xSum,
             		initialCols.size(),
-            		allColumns.size(),
-            		lastIteration,
-            		lastAddedRoute.getCost()
+            		columns.size(),
+            		iteration,
+            		minCostRoute.getCost()
             		);
             
-//    		cplex.conversion((IloNumVar[]) x.toArray(), IloNumVarType.Bool);
-//    		cplex.conversion(epsilon, IloNumVarType.Int);
-//    		cplex.solve();
+            // ======================== Solve Integer Master Problem ==============================
+            
+            mipConversion( x, extraVehicles );
+            
+			// We limit time for integer problem
+			cplex.setParam( IloCplex.DoubleParam.TiLim, 60 );
+			cplex.solve();
+			
+			double upperBound = cplex.getObjValue();
+            System.out.println("Upper bound: " + upperBound);
+            System.out.println("Lower bound: " + lowerBound);
+            System.out.println("Relative gap: "+(upperBound - cplex.getBestObjValue())/cplex.getBestObjValue());
+            
+            result.setUpperBound( upperBound );
+    		result.setGap( (upperBound-lowerBound)/lowerBound );
+    		result.setMipGap( (upperBound - cplex.getBestObjValue())/cplex.getBestObjValue() );
+            result.setIntegerSolution( getSolutionSet( x, false ) );
     		
             return result;
             
-        } catch (IloException e) {
+        } catch (IloException | IOException e) {
             System.err.println("Concert exception caught: " + e);
         }
-        
         
         return null;
     }
 	
+	/**
+	 * 
+	 * @param x
+	 * @param extraVehicles
+	 * @throws IloException
+	 */
+	private void mipConversion(ArrayList<IloNumVar> x, IloNumVar extraVehicles) throws IloException {
+        System.out.println("Converting to MIP...");
+
+        List<IloConversion> mipConversion = new ArrayList<IloConversion>();
+        for (IloNumVar decisionVar : x) {
+			mipConversion.add( cplex.conversion(decisionVar, IloNumVarType.Bool) ) ;
+			cplex.add( mipConversion.get(mipConversion.size()-1) );
+        }
+        
+		mipConversion.add(cplex.conversion(extraVehicles, IloNumVarType.Int)) ;
+		cplex.add(mipConversion.get(mipConversion.size()-1));
+	}
+	
+	/**
+	 * 
+	 * @param relaxed
+	 * @return
+	 * @throws IloException
+	 */
+	private IloRange[] getNodesConstraints(boolean relaxed) throws IloException {
+		IloRange[] contn = new IloRange[instance.getNbNodes()];
+		
+		contn[0] = cplex.addRange(1, Double.MAX_VALUE);
+		contn[instance.getNbNodes()-1] = cplex.addRange(1, Double.MAX_VALUE);
+		
+		for(int  i = 1; i < instance.getNbNodes()-1; i++) {
+			if(relaxed) {
+				contn[i] = cplex.addRange(1, Double.MAX_VALUE);
+			}else {
+				contn[i] = cplex.addRange(1, 1);
+			}
+		}
+		
+		return contn;
+	}
+
 	/**
 	 * Get the sum of x variables
 	 * @param x
@@ -205,23 +255,112 @@ public class VrptwSolver {
 	 * Writes the generated labels on a file and returns the list of labels in the solution set
 	 * @param x
 	 * @param allColumns
-	 * @param write
+	 * @param writeColumns
 	 * @return
 	 * @throws UnknownObjectException
 	 * @throws IloException
 	 * @throws IOException
 	 */
-	private ArrayList<Label> getSolution( ArrayList<IloNumVar> x, ArrayList<Label> allColumns, boolean write )
+	private ArrayList<Label> getSolutionSet( ArrayList<IloNumVar> x, boolean writeColumns )
 			throws UnknownObjectException, IloException, IOException {
 		
-		ArrayList<Label> solutionSet = new ArrayList<Label>();
-		File file = null;
+		ArrayList<Label> solutionSet = new ArrayList<Label>();		
 		
-		if( write ) {
-			int nbClients = instance.getNbNodes() - 2;
-			file = new File("columns_"+instance.getName()+"_"+nbClients+".csv");
-			file.createNewFile();
+		File file = getColumnFile( writeColumns );
+
+		writeColumnTitles( file );
+		
+		for(int index = 0; index < x.size(); index++) {
+			IloNumVar xi = x.get(index);
+
+			Label generatedRoute = columns.get(index);
+			double xValue = cplex.getValue(xi);
 			
+			if( xValue > 0 ) {
+				solutionSet.add( generatedRoute );
+			}
+			
+			writeColumn( file, xValue, generatedRoute );
+		}
+
+		return solutionSet;
+	}
+	
+	/**
+	 * 
+	 * @param writeDualValues 
+	 * @return
+	 * @throws IOException
+	 */
+	private FileWriter getDualValuesFile(boolean writeDualValues) throws IOException {
+		// Create folder
+		if(writeDualValues) {
+			int nbClients = instance.getNbNodes() - 2;
+			String folderName = "dualValues";
+			folderName = folderName + "-" + nbClients;
+			File folder = new File( folderName );
+			folder.mkdirs();
+			
+			// Create file
+			File file = new File(folderName + File.separator + instance.getName()+"_"+nbClients+".csv");
+			file.createNewFile();			
+			FileWriter writer = new FileWriter(file);
+			return writer;
+		}
+		return null;
+	}
+	
+	/**
+	 * 
+	 * @param writer
+	 * @param contn
+	 * @throws UnknownObjectException
+	 * @throws IloException
+	 * @throws IOException
+	 */
+	private void writeDualValues(FileWriter writer, IloRange[] contn) throws UnknownObjectException, IloException, IOException {
+		if(writer != null) {
+			String line = "";
+	        
+			for(IloRange constraint : contn) {
+	        	line += cplex.getDual(constraint) + "\t" ;
+	        }
+	        
+			writer.write( line + "\n" );
+			writer.flush();
+		}
+	}
+	
+	/**
+	 * 
+	 * @param file
+	 * @param xValue
+	 * @param generatedRoute
+	 * @throws IOException
+	 */
+	private void writeColumn(File file, double xValue, Label generatedRoute) throws IOException {
+		if( file != null ) {
+			FileWriter writer = new FileWriter(file, true);
+
+			writer.write( xValue + "\t" );
+
+			writer.write( generatedRoute.getRouteDistance(instance) + "\t" );
+			writer.write( generatedRoute.getCost() + "\t" );
+			writer.write( generatedRoute.getNbVisitedNodes() + "\t" );
+			writer.write( generatedRoute.getRoute() + "\n" );
+			
+			writer.flush();
+			writer.close();
+		}		
+	}
+	
+	/**
+	 * 
+	 * @param file
+	 * @throws IOException
+	 */
+	private void writeColumnTitles(File file) throws IOException {
+		if( file != null ) {
 			FileWriter writer = new FileWriter(file);
 			
 			writer.write( "Factor" + "\t" +
@@ -229,62 +368,60 @@ public class VrptwSolver {
 					"Reduced Cost" + "\t" +
 					"N. Visited" + "\t" +
 					"Route" + "\n" );
-			
+			writer.flush();
 			writer.close();
 		}
-		
-		System.out.println( "\nSolution:" );
-		for(int index = 0; index < x.size(); index++) {
-			IloNumVar xi = x.get(index);
-
-			Label generatedRoute = allColumns.get(index);
-			double xValue = cplex.getValue(xi);
-			
-			if( xValue > 0 ) {
-				solutionSet.add( generatedRoute );
-				System.out.println(xi.getName() + ": " + xValue);
-				System.out.println( generatedRoute );
-				System.out.println( generatedRoute.getRoute() );	
-			}
-
-			if( write ) {
-				FileWriter writer = new FileWriter(file, true);
-
-				writer.write( xValue + "\t" );
-
-				writer.write( generatedRoute.getRouteDistance(instance) + "\t" );
-				writer.write( generatedRoute.getCost() + "\t" );
-				writer.write( generatedRoute.getNbVisitedNodes() + "\t" );
-				writer.write( generatedRoute.getRoute() + "\n" );
-
-				writer.close();
-			}
+	}
+	
+	/**
+	 * 
+	 * @param writeColumns
+	 * @return
+	 * @throws IOException
+	 */
+	private File getColumnFile(boolean writeColumns) throws IOException {
+		if( !writeColumns ) {
+			return null;
 		}
-
-		return solutionSet;
+		
+		// Create folder
+		int nbClients = instance.getNbNodes() - 2;
+		String folderName = "columns";
+		folderName = folderName + "-" + nbClients;
+		File folder = new File( folderName );
+		folder.mkdirs();
+		
+		// Create file
+		File file = new File(folderName + File.separator + instance.getName()+"_"+nbClients+".csv");
+		file.createNewFile();
+		
+		return file;
 	}
 	
 	/**
 	 * Add column to the relaxed master problem
-	 * @param route
+	 * @param routes
 	 * @param x
 	 * @param obj
 	 * @param contn
 	 * @param contc
 	 * @throws IloException
 	 */
-	private void addColumn(Label route, ArrayList<IloNumVar> x, IloObjective obj, IloRange[] contn, IloRange contc)
+	private void addColumns(ArrayList<Label> routes, ArrayList<IloNumVar> x, IloObjective obj, IloRange[] contn, IloRange contc)
 			throws IloException {
-		
-		IloColumn col = cplex.column( obj, route.getRouteDistance(instance) );
-		
-		for(int node = 0; node < instance.getNbNodes(); node++) {
-			int visit = route.isVisited( node ) ? 1:0;
-			col = col.and( cplex.column(contn[node], visit) );
+		for(Label route : routes) {
+			IloColumn col = cplex.column( obj, route.getRouteDistance(instance) );
+			
+			for(int node = 0; node < instance.getNbNodes(); node++) {
+				int visit = route.isVisited( node ) ? 1:0;
+				col = col.and( cplex.column(contn[node], visit) );
+			}
+			
+			col = col.and( cplex.column(contc, 1) );
+			x.add( cplex.numVar( col, 0,  1, "x_"+x.size()) );
+			
+			columns.add(route);
 		}
-		
-		col = col.and( cplex.column(contc, 1) );
-		x.add( cplex.numVar( col, 0,  1, "x_"+x.size()) );
 	}
 	
 	/**
@@ -296,6 +433,9 @@ public class VrptwSolver {
 	private ArrayList<Label> getNewColumns(int timeLimit, int labelLimit) {
 		LabellingSolver solver = new LabellingSolver(instance);
 		
+		if(labelLimit == 0) {
+			System.out.println("Solving exact method");
+		}
         ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit, labelLimit);
         
 		// Get solution information
@@ -310,32 +450,11 @@ public class VrptwSolver {
 		
 		Collections.sort(negCostRoutes);
 		
+		if( negCostRoutes.isEmpty() ) {
+			negCostRoutes.add(depotLabels.get(0));
+		}
+		
 		return negCostRoutes;
-	}
-	
-	/**
-	 * Get the minimum cost route of the subproblem
-	 * @param timeLimit
-	 * @param labelLimit
-	 * @return
-	 */
-	@SuppressWarnings("unused")
-	private ArrayList<Label> getNewColumn(int timeLimit, int labelLimit) {
-        LabellingSolver solver = new LabellingSolver(instance);
-		
-        ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit, labelLimit);
-        
-		// Get solution information
-    	ArrayList<Label> depotLabels = nodeLabels[nodeLabels.length - 1];
-    	
-    	Label minCostRoute = depotLabels.get(0);
-		for ( Label currentLabel : depotLabels ) {
-    		if(currentLabel.getCost() < minCostRoute.getCost()) {
-    			minCostRoute = currentLabel;
-    		}
-    	}
-		
-		return (ArrayList<Label>) Arrays.asList(minCostRoute);
 	}
 	
 	/**
@@ -391,6 +510,8 @@ public class VrptwSolver {
 	 * Generate default columns where one vehicle visits one node 
 	 * @return
 	 */
+	@SuppressWarnings("unused")
+	@Deprecated
 	private ArrayList<Label> getDefaultCols() {
 		ArrayList<Label> result = new ArrayList<Label>();
 		
@@ -409,36 +530,5 @@ public class VrptwSolver {
 		}
 		
 		return result;
-	}
-	
-	/**
-	 * 
-	 * @param contn
-	 * @param contc
-	 * @throws UnknownObjectException
-	 * @throws IloException
-	 */
-	@SuppressWarnings("unused")
-	private void printDualValues(IloRange[] contn, IloRange contc) throws UnknownObjectException, IloException {
-        System.out.println("dual of capacity constraint: "+cplex.getDual(contc));
-        
-        for(IloRange constraint : contn) {
-            System.out.println("dual of path constraint: "+cplex.getDual(constraint));
-        }
-	}
-	
-	/**
-	 * 
-	 * @param epsilon
-	 * @param x
-	 * @throws UnknownObjectException
-	 * @throws IloException
-	 */
-	@SuppressWarnings("unused")
-	private void printVariables(IloNumVar epsilon, ArrayList<IloNumVar> x) throws UnknownObjectException, IloException {
-        System.out.println("e : " + cplex.getValue(epsilon));
-        for(IloNumVar xi : x) {
-            System.out.println(xi.getName() + ": " + cplex.getValue(xi));
-        }
 	}
 }

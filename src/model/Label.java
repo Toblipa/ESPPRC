@@ -180,9 +180,9 @@ public class Label implements Comparable<Label>{
 	
 	@Override
 	public int compareTo(Label that) {
-		int comparison = this.resources.compareTo( that.getResources() );
+		double comparison = this.getCost() - that.getCost();
 		
-		return comparison;
+		return (int) Math.signum(comparison);
 	}
 	
 	// ===== GETTERS & SETTERS =====

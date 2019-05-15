@@ -21,11 +21,12 @@ public class Main {
 		// Default options
 		int nbClients = 50;
 		int useCplex = 0;
-		int timeLimit = 600;
-		int labelLimit = 0;
+		int timeLimit = 60;
+		int labelLimit = 100;
 		String instanceType = "C";
 		String directory = "./instances/solomon_"+nbClients+"/";
 		String problem = "Master";
+		boolean writeColumns = false;
 		
 		// Reading arguments
 		if(args.length  > 0) {
@@ -59,7 +60,7 @@ public class Main {
 		
 		switch( problem.toUpperCase() ) {
 			case "MASTER":
-				runMasterSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances, true);
+				runMasterSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances, writeColumns);
 				break;
 			case "PRICING":
 				runPricingSolver(directory, instanceType, nbClients, timeLimit, labelLimit, useCplex, solomonInstances);
@@ -68,7 +69,7 @@ public class Main {
 				runLabelWriter(directory, nbClients, timeLimit, labelLimit, solomonInstances);
 				break;
 			default:
-				System.err.println("No problem given");
+				System.err.println("Could not recognise problem");
 		}
 	}
 	
@@ -80,12 +81,12 @@ public class Main {
 	 * @param timeLimit
 	 * @param labelLimit
 	 * @param solomonInstances
-	 * @param writeResults
+	 * @param writeColumns
 	 * @throws IOException 
 	 */
 	@SuppressWarnings("unused")
 	private static void runMasterSolver(String directory, String instanceType, int nbClients, int timeLimit,
-			int labelLimit, String[] solomonInstances, boolean writeResults) throws IOException {
+			int labelLimit, String[] solomonInstances, boolean writeColumns) throws IOException {
 
 		// Stock results in a list
 		VRPTWResult[] labellingResults = new VRPTWResult[solomonInstances.length];
@@ -121,14 +122,14 @@ public class Main {
 
 			long startTime = System.nanoTime();
 
-			VRPTWResult result = mp.startColumnGeneration(timeLimit, labelLimit, writeResults);
+			VRPTWResult result = mp.runColumnGeneration(timeLimit, labelLimit, writeColumns, false);
 
 			long endTime = System.nanoTime();
 			long timeElapsed = endTime - startTime;
 
 			System.out.println("--------------------------------------");
 
-			writeMasterResult(writer, solomonInstances[i], instance, result, timeElapsed/1000000);
+			writeMasterResult(writer, instance, result, timeElapsed/1000000);
 
 		}
 		
@@ -273,7 +274,8 @@ public class Main {
 			// Preprocessing nodes
 			instance.buildEdges(true);
 			instance.buildSuccessors();
-			
+			instance.setName( solomonInstances[i].substring(0, solomonInstances[i].length() - 4) );
+
 	        // Introduction
 			System.out.println("\n>>> Solving instance "+solomonInstances[i] + "\n" +
 					"Solving the instance for " + instance.getNodes().length + " nodes");
@@ -298,7 +300,7 @@ public class Main {
 			System.out.println("--------------------------------------");
 			
 			// Write results in a file
-			writePricingResults(writer, solomonInstances[i], instance, cplexResults[i], labellingResults[i]);
+			writePricingResults(writer, instance, cplexResults[i], labellingResults[i]);
 		}
 		
 		writer.close();
@@ -345,22 +347,22 @@ public class Main {
 		String cplexTitles = "";
 		if(useCplex) {
 			cplexTitles = 	"Cplex Cost" + "\t" +
-							"Cplex E. Time [ms]" + "\t" +
-							"Cplex N. Visited Nodes" + "\t" +
+							"Cplex Eº Time [ms]" + "\t" +
+							"Cplex Nº Visited Nodes" + "\t" +
 							"Cplex Route" + "\t";
 		}
 		
 		writer.write( "File name"+"\t" +
-				"N. Arcs" + "\t" +
+				"Nº Edges" + "\t" +
 				"Density" + "\t" +
-				"% Neg. Arcs" + "\t" +
+				"% Neg. Edges" + "\t" +
 				cplexTitles +
 				"Label. Cost" + "\t" +
 				"Label. E. Time [ms]" + "\t" +
-				"Label. N. Visited" + "\t" +
+				"Label. Nº Visited" + "\t" +
 				"Label. Route" + "\t" + 
-				"Label. N. Feasible Routes" + "\t" +
-				"Label. N. Generated Routes" + "\n" );
+				"Label. Nº Feasible Routes" + "\t" +
+				"Label. Nº Generated Routes" + "\n" );
 		
 		writer.close();
 	}
@@ -368,37 +370,36 @@ public class Main {
 	/**
 	 * Writes a line on a given file containg the results and the instance information
 	 * @param writer
-	 * @param solomonInstance
 	 * @param instance
 	 * @param cplexResult
 	 * @param labellingResult
 	 * @throws IOException
 	 */
-	private static void writePricingResults(FileWriter writer, String solomonInstance, EspprcInstance instance,
+	private static void writePricingResults(FileWriter writer, EspprcInstance instance,
 			ESPPRCResult cplexResult, ESPPRCResult labellingResult) throws IOException {
-		
-		writer.write( solomonInstance + "\t" );
-		
+
+		writer.write( instance.getName() + "\t" );
+
 		writer.write( instance.getNbEdges() + "\t" );
 		writer.write( instance.getDensity() + "\t" );
 		writer.write( ( instance.getNbNegativeEdges()/instance.getNbEdges() ) + "\t" );
-		
+
 		if(cplexResult != null) {
 			writer.write( cplexResult.getCost() + "\t" );
 			writer.write( cplexResult.getTimeElapsed() + "\t" );
 			writer.write( cplexResult.getNbVisitedNodes() + "\t" );
 			writer.write( cplexResult.getRoute() + "\t" );
 		}
-		
+
 		writer.write( labellingResult.getCost() + "\t" );
 		writer.write( labellingResult.getTimeElapsed() + "\t" );
 		writer.write( (labellingResult.getNbVisitedNodes()-1) + "\t" );
 		writer.write( labellingResult.getRoute() + "\t" );
 		writer.write( labellingResult.getNbFeasibleRoutes() + "\t" );
 		writer.write( labellingResult.getNbTotalRoutes() + "\n" );
-		
+
 		writer.flush();
-		
+
 	}
 	
 	/**
@@ -409,50 +410,62 @@ public class Main {
 	private static void writeMasterTitles(File file) throws IOException {
 		FileWriter writer = new FileWriter(file);
 		
-		writer.write( "File name"+"\t" +
+		writer.write( "Instance"+"\t" +
 		
-				"N. Arcs" + "\t" +
+				"Nº Edges" + "\t" +
 				"Density" + "\t" +
 				
-				"Objective" + "\t" +
+				"Lower Bound" + "\t" +
+				"Upper Bound" + "\t" +
+				"Gap" + "\t" +
+				"Relative Gap" + "\t" +
 				"E. Time [ms]" + "\t" +
 				"Decision Var. Sum" + "\t" +
-				"Solution Set" + "\t" +
-				"N. Intit. Routes" + "\t" +
-				"N. Gen. Routes" + "\t" +
-				"N. Iterations" + "\t" + 
-				"Reduced Cost" + "\n" );
+				"R. Sol. Set" + "\t" +
+				"Int. Sol. Set" + "\t" +
+				"Nº Intit. Routes" + "\t" +
+				"Nº Gen. Routes" + "\t" +
+				"Nº Iterations" + "\n");
 		
 		writer.close();
-		
 	}
 	
 	/**
 	 * 
 	 * @param writer
-	 * @param instanceName
 	 * @param instance
 	 * @param result
 	 * @param timeElapsed
 	 * @throws IOException
 	 */
-	private static void writeMasterResult(FileWriter writer, String instanceName, EspprcInstance instance, VRPTWResult result, long timeElapsed)
+	private static void writeMasterResult(FileWriter writer, EspprcInstance instance, VRPTWResult result, long timeElapsed)
 			throws IOException {
+		boolean solved = result.getReducedCost() > -1e-8;
 		
-		writer.write( instanceName + "\t" );
+		writer.write( instance.getName() + "\t" );
 		
 		writer.write( instance.getNbEdges() + "\t" );
 		writer.write( instance.getDensity() + "\t" );
 
-		writer.write( result.getObjective() + "\t" );
+		writer.write( solved ? result.getLowerBound() + "\t" : "-\t");
+		writer.write( result.getUpperBound() + "\t" );
+		writer.write( solved ? result.getGap() + "\t" :  "-\t");
+		writer.write( result.getMipGap()  + "\t");
 		writer.write( timeElapsed + "\t" );
-		writer.write( result.getxSum() + "\t" );
-		writer.write( result.getRoutes().size() + "\t" );
+		writer.write( solved ? result.getxSum() + "\t" : "-\t");
+		writer.write( solved ? result.getRelaxedSolution().size() + "\t" : "-\t");
+		writer.write( result.getIntegerSolution().size() + "\t" );
 		writer.write( result.getInitialRoutes() + "\t" );
 		writer.write( result.getGeneratedRoutes() + "\t" );
-		writer.write( result.getIterations() + "\t" );
-		writer.write( result.getReducedCost() + "\n" );
+		writer.write( result.getIterations() + "" );
 		
+		for(Label solution : result.getIntegerSolution()) {
+			writer.write("\t" + solution.getRoute());
+		}
+		
+		// End line
+		writer.write("\n");
+		// Write down results
 		writer.flush();
 	}
 
@@ -601,10 +614,21 @@ public class Main {
 	}
 	
 	private static String[] getTestInstances2() {
-		String[] instances = new String[3];
+		String[] instances = new String[14];
 		instances[0] = "R102.txt";
 		instances[1] = "R104.txt";
-		instances[2] = "RC104.txt";
+		instances[2] = "R107.txt";
+		instances[3] = "R108.txt";
+		instances[4] = "R112.txt";
+		instances[5] = "C101.txt";
+		instances[6] = "C103.txt";
+		instances[7] = "C104.txt";
+		instances[8] = "C105.txt";
+		instances[9] = "C109.txt";
+		instances[10] = "RC101.txt";
+		instances[11] = "RC103.txt";
+		instances[12] = "RC104.txt";
+		instances[13] = "RC108.txt";
 		return instances;
 	}
 	

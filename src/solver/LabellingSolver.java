@@ -50,8 +50,7 @@ public class LabellingSolver {
 		E.add( instance.getNode(0) );
 		
 		// To stop the algorithm at a certain time
-		long startTime = System.currentTimeMillis();
-		long endTime = startTime + timeLimit*1000;
+		long endTime = System.currentTimeMillis() + timeLimit*1000;
 		boolean inTime = true;
 		// Repeat until E is empty
 		do {
@@ -126,13 +125,12 @@ public class LabellingSolver {
 			if( !extendedLabel.isDominated() ) {
 				hasChanged = true;
 				addToList(successorLabels, extendedLabel);
+//				successorLabels.add(extendedLabel);
 			}
 		}
 				
 		if( labelLimit > 0 && successorLabels.size() > labelLimit ) {
 			for( int i=0 ; i < successorLabels.size() - labelLimit; i++ ) {
-//				int removeIndex = 0;
-//				int removeIndex = (int) successorLabels.size()/2;
 				int removeIndex = successorLabels.size()-1;
 				successorLabels.remove( removeIndex );
 			}
@@ -146,7 +144,7 @@ public class LabellingSolver {
 	 * @param successorLabels
 	 * @param extendedLabel
 	 */
-	private void addToList(ArrayList<Label> successorLabels, Label extendedLabel) {		
+	private void addToList(ArrayList<Label> successorLabels, Label extendedLabel) {	
 		for( int i=0; i < successorLabels.size(); i++ ) {
 			int comparison = successorLabels.get(i).compareTo(extendedLabel);
 			if(comparison  > 0) {

@@ -188,29 +188,26 @@ public class Resources implements Comparable<Resources>{
 		double costDiff = this.getCost() - that.getCost();
 		
 		int unreachableDiff = this.getNbUnreachableNodes() - that.getNbUnreachableNodes();
-		int visitedDiff = this.getNbVisitedNodes() - that.getNbVisitedNodes();
 		
-		double comparison = costDiff; //+ unreachableDiff - visitedDiff;
+		double timeDiff = this.time - that.getTime();
+		double demandDiff = this.demand - that.getDemand();
 		
-//		double timeDiff = this.time - that.getTime();
-//		double demandDiff = this.demand - that.getDemand();
-//		
-//		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableDiff <= 0);
-//		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableDiff >= 0);
-//		
-//		if(thisDominance == thatDominance) {
-//			return 0;
-//		}
-//		
-//		boolean[] thatUnreachableVector = that.getUnreachableVector();
-//		for(int k = 0; k < this.unreachableVector.length; k++) {
-//			if( (thisDominance && this.unreachableVector[k] && !thatUnreachableVector[k]) || 
-//				(thatDominance && !this.unreachableVector[k] && thatUnreachableVector[k])	) {
-//				return 0;
-//			}
-//		}
+		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableDiff <= 0);
+		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableDiff >= 0);
 		
-		return (int) Math.signum(comparison);
+		if(thisDominance == thatDominance) {
+			return 0;
+		}
+		
+		boolean[] thatUnreachableVector = that.getUnreachableVector();
+		for(int k = 0; k < this.unreachableVector.length; k++) {
+			if( (thisDominance && this.unreachableVector[k] && !thatUnreachableVector[k]) || 
+				(thatDominance && !this.unreachableVector[k] && thatUnreachableVector[k])	) {
+				return 0;
+			}
+		}
+		
+		return (int) Math.signum(costDiff);
 	}
 	
 	// ============ GETTERS & SETTERS =================

@@ -120,6 +120,8 @@ public class EspprcInstance {
             for(int j=0; j < nbNodes; j++) {
             	if(i != j && i != nbNodes-1) {
             		double euclidianDistance = this.getNodes()[i].distance(this.getNodes()[j]);
+            		// Truncate
+            		euclidianDistance =  Math.floor(euclidianDistance * 10) / 10;
             		int randomInt = rand.nextInt(max - min + 1) + min;
             		if( !simulate ) { randomInt = 0; }
             		

@@ -5,20 +5,40 @@ import java.util.ArrayList;
 public class VRPTWResult {
 
 	/**
-	 * The list of the routes used in the solution set
+	 * The list of the routes used in the solution set of the relaxed problem
 	 */
-	private ArrayList<Label> routes;
+	private ArrayList<Label> relaxedSolution;
+	
+	/**
+	 * The list of the routes used in the solution set of the MIP
+	 */
+	private ArrayList<Label> integerSolution;
 
 	/**
-	 * Last objective value
+	 * Last relaxed objective value
 	 */
-	private double objective;
+	private double lowerBound;
+	
+	/**
+	 * Integer problem objective value
+	 */
+	private double upperBound;
 	
 
 	/**
 	 * Time elpased during resolution
 	 */
 	private long timeElapsed;
+	
+	/**
+	 * Cplex resolution gap of the MIP
+	 */
+	private double mipGap;
+	
+	/**
+	 * Gap between the upper and lower bounds as a percentage of the lower bound
+	 */
+	private double gap;
 	
 	/**
 	 * Sum of the x variables
@@ -54,8 +74,8 @@ public class VRPTWResult {
 	 * @param reducedCost
 	 */
 	public VRPTWResult(ArrayList<Label> routes, double objective, double xSum, int initialRoutes, int generatedRoutes, int iterations, double reducedCost) {
-		this.setRoutes(routes);
-		this.setObjective(objective);
+		this.setRelaxedSolution(routes);
+		this.setLowerBound(objective);
 		this.setxSum(xSum);
 		this.setInitialRoutes(initialRoutes);
 		this.setGeneratedRoutes(generatedRoutes);
@@ -65,20 +85,20 @@ public class VRPTWResult {
 	
 	// ============== GETTERS & SETTERS ============
 	
-	public ArrayList<Label> getRoutes() { 
-		return routes;
+	public ArrayList<Label> getRelaxedSolution() { 
+		return relaxedSolution;
 	}
 
-	public void setRoutes(ArrayList<Label> routes) {
-		this.routes = routes;
+	public void setRelaxedSolution(ArrayList<Label> routes) {
+		this.relaxedSolution = routes;
 	}
 
-	public double getObjective() {
-		return objective;
+	public double getLowerBound() {
+		return lowerBound;
 	}
 
-	public void setObjective(double objective) {
-		this.objective = objective;
+	public void setLowerBound(double objective) {
+		this.lowerBound = objective;
 	}
 
 	public long getTimeElapsed() {
@@ -127,5 +147,37 @@ public class VRPTWResult {
 
 	public void setGeneratedRoutes(int generatedRoutes) {
 		this.generatedRoutes = generatedRoutes;
+	}
+
+	public double getUpperBound() {
+		return upperBound;
+	}
+
+	public void setUpperBound(double upperBound) {
+		this.upperBound = upperBound;
+	}
+
+	public double getMipGap() {
+		return mipGap;
+	}
+
+	public void setMipGap(double mipGap) {
+		this.mipGap = mipGap;
+	}
+
+	public double getGap() {
+		return gap;
+	}
+
+	public void setGap(double gap) {
+		this.gap = gap;
+	}
+
+	public ArrayList<Label> getIntegerSolution() {
+		return integerSolution;
+	}
+
+	public void setIntegerSolution(ArrayList<Label> integerSolution) {
+		this.integerSolution = integerSolution;
 	}
 }
