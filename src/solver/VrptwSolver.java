@@ -230,9 +230,10 @@ public class VrptwSolver {
 	 * @throws IloException
 	 */
 	private IloRange[] getNodesConstraints(boolean relaxed) throws IloException {
-		IloRange[] contn = new IloRange[instance.getNbNodes()-2];
+		int depotNodes = instance.isDuplicateOrigin() ? 2 : 1;
+		IloRange[] contn = new IloRange[instance.getNbNodes() - depotNodes];
 		
-		for(int  i = 0; i < instance.getNbNodes()-2; i++) {
+		for(int  i = 0; i < instance.getNbNodes() - depotNodes; i++) {
 			if(relaxed) {
 				contn[i] = cplex.addRange(1, Double.MAX_VALUE);
 			}else {
@@ -302,7 +303,8 @@ public class VrptwSolver {
 	private FileWriter getDualValuesFile(boolean writeDualValues) throws IOException {
 		// Create folder
 		if(writeDualValues) {
-			int nbClients = instance.getNbNodes() - 2;
+			int depotNodes = instance.isDuplicateOrigin() ? 2 : 1;
+			int nbClients = instance.getNbNodes() - depotNodes;
 			String folderName = "dualValues";
 			folderName = folderName + "-" + nbClients;
 			File folder = new File( folderName );
@@ -392,7 +394,8 @@ public class VrptwSolver {
 		}
 		
 		// Create folder
-		int nbClients = instance.getNbNodes() - 2;
+		int depotNodes = instance.isDuplicateOrigin() ? 2 : 1;
+		int nbClients = instance.getNbNodes() - depotNodes;
 		String folderName = "columns";
 		folderName = folderName + "-" + nbClients;
 		File folder = new File( folderName );
@@ -416,10 +419,11 @@ public class VrptwSolver {
 	 */
 	private void addColumns(ArrayList<Label> routes, ArrayList<IloNumVar> x, IloObjective obj, IloRange[] contn, IloRange contc)
 			throws IloException {
+		int depotNodes = instance.isDuplicateOrigin() ? 2 : 1;
 		for(Label route : routes) {
 			IloColumn col = cplex.column( obj, route.getRouteDistance(instance) );
 			
-			for(int node = 0; node < instance.getNbNodes()-2; node++) {
+			for(int node = 0; node < instance.getNbNodes() - depotNodes; node++) {
 				int visit = route.isVisited( node + 1) ? 1:0;
 				col = col.and( cplex.column(contn[node], visit) );
 			}
@@ -469,45 +473,41 @@ public class VrptwSolver {
 	 * @return
 	 */
 	private ArrayList<Label> getInitialCols() {
-		ArrayList<Label> result = new ArrayList<Label>();
 		
 		ArrayList<Customer> nodes = new ArrayList<Customer>(Arrays.asList(instance.getNodes()));
 		nodes.remove(0);
-		boolean[] coveredNodes = new boolean[instance.getNbNodes()];
-		int nbCoveredNodes = 2; // Origin and Depot
-		
 		Collections.sort(nodes);
+
+		boolean[] coveredNodes = new boolean[instance.getNbNodes()];
+		int nbCoveredNodes = instance.isDuplicateOrigin() ? 2 : 1; // Origin and Depot		
 		
+		ArrayList<Label> result = new ArrayList<Label>();
+
 		while(nbCoveredNodes < instance.getNbNodes()) {
 			Label origin = new Label(instance);
-			int index = 0;
-			Customer nextNode = nodes.get(index);
-			while(coveredNodes[nextNode.getId()] && index < instance.getNbNodes()-2) {
-				index++;
-				nextNode = nodes.get(index);
-			}
+			Customer node = origin.getCurrent();
 			
-			while( !nextNode.isDepot() ) {
-				Label path = origin.extendLabel(nextNode, instance);
-				coveredNodes[nextNode.getId()] = true;
-				nbCoveredNodes++;
-				origin = path;
-				
-				ArrayList<Customer> successors = instance.getSuccessors()[nextNode.getId()];
+			while( origin.getNbUnreachableNodes() < instance.getNbNodes() ) {				
+				ArrayList<Customer> successors = instance.getSuccessors()[node.getId()];
 				Collections.sort(successors);
-				index = 0;
-				nextNode = successors.get(index);
-				
-				while((!origin.isReachable(nextNode) || coveredNodes[nextNode.getId()]) && index < successors.size()-1) {
+							
+				Customer nextNode = successors.get(0);
+				int index = 0;	
+				while( !origin.isReachable(nextNode) || coveredNodes[nextNode.getId()] ) {
 					index++;
 					nextNode = successors.get(index);
 				}
+				
+				origin = origin.extendLabel(nextNode, instance);
+				
+				if( !nextNode.isDepot() ) {
+					nbCoveredNodes++;
+					coveredNodes[nextNode.getId()] = true;
+				}
+				node = nextNode;
 			}
 			
-			Label path = origin.extendLabel(nextNode, instance);
-			coveredNodes[nextNode.getId()] = true;
-			
-			result.add(path);
+			result.add(origin);
 		}
 		
 		return result;

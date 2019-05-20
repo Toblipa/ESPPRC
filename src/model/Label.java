@@ -121,7 +121,7 @@ public class Label implements Comparable<Label>{
 
 		if (previousLabel == null) return "Start";
 		
-		String id = current.isDepot() ? "Depot": ", " + current.getId();
+		String id = current.isDepot() ? ", Depot": ", " + current.getId();
 		
 		return previousLabel.getRoute() + id;
 		
@@ -224,6 +224,10 @@ public class Label implements Comparable<Label>{
 	
 	public int getNbVisitedNodes() {
 		return resources.getNbVisitedNodes();
+	}
+	
+	public int getNbUnreachableNodes() {
+		return resources.getNbUnreachableNodes();
 	}
 
 	public boolean isVisited(Customer node) {

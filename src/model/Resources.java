@@ -137,7 +137,13 @@ public class Resources implements Comparable<Resources>{
 		}
 		
 		// Add demand resource
-		this.addDemand( currentNode.getDemand() );
+		if(currentNode.getId() != 0) {
+			this.addDemand( currentNode.getDemand() );
+		}
+		else {
+			// If origin then reset demand consumption
+			this.demand = 0;
+		}
 		
 		// Update visited nodes
 		if(currentNode.getId() != 0) {

@@ -182,7 +182,8 @@ public class EspprcInstance {
 	 * @param pi
 	 */
 	public void updateDualValues(double[] pi) {
-        for (int i = 1; i < this.getNbNodes()-1; i++) {
+		int duplicated = duplicateOrigin ? 1 : 0;
+        for (int i = 1; i < this.getNbNodes() - duplicated; i++) {
             for (int j = 0; j < this.getNbNodes(); j++) {
           	  this.cost[i][j] = this.distance[i][j] - pi[i-1];
             }

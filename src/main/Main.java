@@ -22,10 +22,10 @@ public class Main {
 		int nbClients = 100;
 		int useCplex = 0;
 		int timeLimit = 600;
-		int labelLimit = 0;
-		String instanceType = "R111";
+		int labelLimit = 100;
+		String instanceType = "R104";
 		String directory = "./instances/solomon_"+nbClients+"/";
-		String problem = "MTPricing";
+		String problem = "Master";
 		boolean writeColumns = false;
 		
 		// Reading arguments
@@ -556,6 +556,7 @@ public class Main {
 		
     	Label minCostRoute = depotLabels.get(0);
 		for ( Label currentLabel : depotLabels ) {
+			System.out.println(currentLabel.getRoute());
     		if(currentLabel.getCost() < minCostRoute.getCost()) {
     			minCostRoute = currentLabel;
     		}
