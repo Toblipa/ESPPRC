@@ -34,11 +34,11 @@ public class Resources implements Comparable<Resources>{
 	 */
 	public Resources(EspprcInstance instance) {
 		unreachableVector = new boolean[instance.getNbNodes()];
-		unreachableVector[0] = true;
+		unreachableVector[0] = instance.isDuplicateOrigin();
 		nbUnreachableNodes = 1;
 		
 		visitationVector = new boolean[instance.getNbNodes()];
-		visitationVector[0] = true;
+		visitationVector[0] = instance.isDuplicateOrigin();
 		nbVisitedNodes = 1;
 	}
 	
@@ -140,7 +140,9 @@ public class Resources implements Comparable<Resources>{
 		this.addDemand( currentNode.getDemand() );
 		
 		// Update visited nodes
-		this.updateVisitationVector(currentNode);
+		if(currentNode.getId() != 0) {
+			this.updateVisitationVector(currentNode);
+		}
 		
 		// Update unreachable nodes
 		this.updateUnreachableNodes(instance, currentNode);		

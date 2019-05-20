@@ -1,6 +1,7 @@
 package model;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
 /**
@@ -50,7 +51,7 @@ public class EspprcInstance {
 	 * To identify the instance
 	 */
 	private String name;
-	
+
 	/**
 	 * Default constructor
 	 */
@@ -108,31 +109,34 @@ public class EspprcInstance {
 		int max = 20;
 		int min = 0;
 		Random rand = new Random(0);
-		
+
 		// We introduce a cost factor to model time costs
 		double costFactor = 1;
 		double timeFactor = 1;
-        
+
 		int nbNodes = this.getNodes().length;
-        this.cost = new double[nbNodes][nbNodes];
-        this.distance = new double[nbNodes][nbNodes];
-        for(int i=0; i < nbNodes; i++) {
-            for(int j=0; j < nbNodes; j++) {
-            	if(i != j && i != nbNodes-1) {
-            		double euclidianDistance = this.getNodes()[i].distance(this.getNodes()[j]);
-            		// Truncate
-            		euclidianDistance =  Math.floor(euclidianDistance * 10) / 10;
-            		int randomInt = rand.nextInt(max - min + 1) + min;
-            		if( !simulate ) { randomInt = 0; }
-            		
-                	this.cost[i][j] = ( euclidianDistance * costFactor) - randomInt;
-                    this.distance[i][j] = euclidianDistance * timeFactor;
-            	}
-            }
-        }
-        
-        // The origin & the depot are the same
-        this.cost[0][nbNodes-1] = 0;
+		this.cost = new double[nbNodes][nbNodes];
+		this.distance = new double[nbNodes][nbNodes];
+		for(int i=0; i < nbNodes; i++) {
+			for(int j=0; j < nbNodes; j++) {
+				if( i != j ) {
+					double euclidianDistance = this.getNodes()[i].distance(this.getNodes()[j]);
+					// Truncate
+					euclidianDistance =  Math.floor(euclidianDistance * 10) / 10;
+					
+					int randomInt = rand.nextInt(max - min + 1) + min;
+					if( !simulate ) { randomInt = 0; }
+
+					this.cost[i][j] = ( euclidianDistance * costFactor) - randomInt;
+					this.distance[i][j] = euclidianDistance * timeFactor;
+				}
+			}
+		}
+		
+		if( this.duplicateOrigin ) {
+			// The origin & the depot are the same
+			this.cost[0][nbNodes-1] = 0;
+		}
 	}
 	
 	/**
@@ -140,34 +144,35 @@ public class EspprcInstance {
 	 */
 	@SuppressWarnings("unchecked")
 	public void buildSuccessors() {
-		this.successors = new ArrayList[nodes.length];
+		successors = new ArrayList[nodes.length];
 		
-		for(int i = 0; i < this.nodes.length; i++) {
-			Customer node = this.nodes[i];
+		for(int i = 0; i < nodes.length; i++) {
+			Customer node = nodes[i];
 			ArrayList<Customer> successorList = new ArrayList<Customer>();
 
-			this.successors[i] = new ArrayList<Customer>();
-		
+			successors[i] = new ArrayList<Customer>();
+			
 			// We check every node to see if it is a valid successor
-			for(int n = 1; n < this.nodes.length; n++) {
-				Customer nextNode = this.nodes[n];
+			int startNode = duplicateOrigin ? 1 : 0;
+			for(int n = startNode; n < nodes.length; n++) {
+				Customer nextNode = nodes[n];
 				
 				// We compute the time needed to reach the node which corresponds to
 				// the minimal time to complete the service in the current node + the time needed to get to the next node
-				double timeToReach = node.getStart() + node.getServiceTime() + this.distance[node.getId()][nextNode.getId()];
+				double timeToReach = node.getStart() + node.getServiceTime() + distance[node.getId()][nextNode.getId()];
 				
 				// Check if it is possible
 				if( i != n && nextNode.getEnd() >= timeToReach ) {
-					this.successors[i].add( nextNode );
+					successors[i].add( nextNode );
 					successorList.add( nextNode );
 				}
 			}
 		}
 		
 		// The depot has no successors
-		if(this.duplicateOrigin) {
-			this.successors[this.successors.length-1] = new ArrayList<Customer>();
-			this.successors[0].remove( this.successors[0].size()-1 );
+		if( duplicateOrigin ) {
+			successors[successors.length-1] = new ArrayList<Customer>();
+			successors[0].remove( successors[0].size()-1 );
 		}
 	}
 	
@@ -179,16 +184,56 @@ public class EspprcInstance {
 	public void updateDualValues(double[] pi) {
         for (int i = 1; i < this.getNbNodes()-1; i++) {
             for (int j = 0; j < this.getNbNodes(); j++) {
-          	  this.cost[i][j] = this.distance[i][j] - pi[i];
+          	  this.cost[i][j] = this.distance[i][j] - pi[i-1];
             }
         }
 	}
 	
 	/**
+	 * 
+	 * @param foundRoute
+	 */
+	public void deleteRouteNodes(Label foundRoute) {
+		ArrayList<Customer> routeNodes = getRouteNodes(foundRoute);
+		updateSuccessors(routeNodes);
+	}
+	
+	/**
+	 * 
+	 * @param route
+	 * @return
+	 */
+	private ArrayList<Customer> getRouteNodes(Label route){
+		ArrayList<Customer> nodes = new ArrayList<Customer>();
+		for(int i = 1; i < this.getNbNodes()-1;i++) {
+			if(route.isVisited(i)) {
+				nodes.add(this.getNode(i));
+			}
+		}
+		return nodes;
+	}
+	
+	/**
+	 * 
+	 * @param deleteNodes
+	 */
+	public void updateSuccessors(ArrayList<Customer> deleteNodes) {
+		for(int i = 0; i < this.nodes.length; i++) {
+			ArrayList<Customer> successorList = this.successors[i];
+			Iterator<Customer> iterator = successorList.iterator();
+			while(iterator.hasNext()) {
+				Customer successor = iterator.next();
+				if( deleteNodes.contains(successor) ) {
+					iterator.remove();
+				}
+			}
+		}
+	}
+
+	/**
 	 * Print the successors of every node
 	 */
-	@SuppressWarnings("unused")
-	private void printSuccessors() {
+	public void printSuccessors() {
 		for(int i = 0; i < successors.length; i++) {
 			System.out.print("Node "+i+": ");
 			for(int s = 0; s < successors[i].size(); s++) {
@@ -201,8 +246,7 @@ public class EspprcInstance {
 	/**
 	 * Print the edge cost matrix
 	 */
-	@SuppressWarnings("unused")
-	private void printCostMatrix() {
+	public void printCostMatrix() {
 		for( int i = 0; i < cost.length; i++ ) {
 			for( int j= 0; j < cost[i].length; j++ ) {
 				System.out.print( Math.floor(cost[i][j]*10)/10+" ");

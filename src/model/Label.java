@@ -27,7 +27,7 @@ public class Label implements Comparable<Label>{
 	 * If the label has already been extended to every successor of the curent node
 	 */
 	private boolean isExtended;
-	
+		
 	/**
 	 * Given an instance it creates the origin label
 	 * @param instance
@@ -119,16 +119,19 @@ public class Label implements Comparable<Label>{
 	public String getRoute() {
 		if (current == null) return "Empty Label";
 
-		if (previousLabel == null) return "";
+		if (previousLabel == null) return "Start";
 		
-		Customer prevNode = previousLabel.getCurrent();
+		String id = current.isDepot() ? "Depot": ", " + current.getId();
 		
-		if (prevNode.getId() == 0) return "";
-
-
-		String id = current.isDepot() ? prevNode.getId()+"" : prevNode.getId()+", ";
-
 		return previousLabel.getRoute() + id;
+		
+//		Customer prevNode = previousLabel.getCurrent();
+//		
+//		if (prevNode.getId() == 0) return "";
+//
+//		String id = current.isDepot() ? prevNode.getId()+"" : prevNode.getId()+", ";
+//
+//		return previousLabel.getRoute() + id;
 	}
 	
 	/**

@@ -19,13 +19,13 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		
 		// Default options
-		int nbClients = 50;
+		int nbClients = 100;
 		int useCplex = 0;
-		int timeLimit = 60;
-		int labelLimit = 100;
-		String instanceType = "C";
+		int timeLimit = 600;
+		int labelLimit = 0;
+		String instanceType = "R111";
 		String directory = "./instances/solomon_"+nbClients+"/";
-		String problem = "Master";
+		String problem = "MTPricing";
 		boolean writeColumns = false;
 		
 		// Reading arguments
@@ -68,11 +68,58 @@ public class Main {
 			case "LABEL":
 				runLabelWriter(directory, nbClients, timeLimit, labelLimit, solomonInstances);
 				break;
+			case "MTPRICING":
+				runMultiTrip(directory, nbClients, timeLimit, labelLimit, solomonInstances);
+				break;
 			default:
 				System.err.println("Could not recognise problem");
 		}
 	}
 	
+	/**
+	 * 
+	 * @param directory
+	 * @param nbClients
+	 * @param timeLimit
+	 * @param labelLimit
+	 * @param solomonInstances
+	 */
+	private static void runMultiTrip(String directory, int nbClients, int timeLimit, int labelLimit,
+			String[] solomonInstances) {
+
+		// Stock results in a list
+		ESPPRCResult[] labellingResults = new ESPPRCResult[solomonInstances.length];
+
+		for(int i = 0; i < solomonInstances.length; i++) {
+			// Creating the instance
+			EspprcInstance instance = new EspprcInstance();
+			instance.setDuplicateOrigin( false );
+
+			// Reading the instances
+			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
+			reader.read();
+
+			// Preprocessing nodes
+			instance.buildEdges( true );
+			instance.buildSuccessors();
+			instance.setName( solomonInstances[i].substring(0, solomonInstances[i].length() - 4) );
+			
+			// Introduction
+			System.out.println("\n>>> Solving instance "+solomonInstances[i] + "\n" +
+					"Solving the instance for " + instance.getNodes().length + " nodes");
+
+			System.out.println("");
+
+			labellingResults[i] = labellingAlgorithm(instance, timeLimit, labelLimit);
+
+			// Log results
+			System.out.println(labellingResults[i].getRoute());
+			System.out.println(labellingResults[i].getCost());
+
+			System.out.println("--------------------------------------");
+		}
+	}
+
 	/**
 	 * 
 	 * @param directory
@@ -325,6 +372,10 @@ public class Main {
 			return getRCInstances();
 		}
 		
+		if(instanceType.equals("All")) {
+			return getAllInstances();
+		}
+		
 		if(instanceType.equals("Test")) {
 			return getTestInstances();
 		}
@@ -425,7 +476,8 @@ public class Main {
 				"Int. Sol. Set" + "\t" +
 				"Nº Intit. Routes" + "\t" +
 				"Nº Gen. Routes" + "\t" +
-				"Nº Iterations" + "\n");
+				"Nº Iterations" + "\t" +
+				"Nº Nodes" + "\n");
 		
 		writer.close();
 	}
@@ -440,7 +492,7 @@ public class Main {
 	 */
 	private static void writeMasterResult(FileWriter writer, EspprcInstance instance, VRPTWResult result, long timeElapsed)
 			throws IOException {
-		boolean solved = result.getReducedCost() > -1e-8;
+		boolean solved = result.isFinished();
 		
 		writer.write( instance.getName() + "\t" );
 		
@@ -457,12 +509,16 @@ public class Main {
 		writer.write( result.getIntegerSolution().size() + "\t" );
 		writer.write( result.getInitialRoutes() + "\t" );
 		writer.write( result.getGeneratedRoutes() + "\t" );
-		writer.write( result.getIterations() + "" );
-		
+		writer.write( result.getIterations() + "\t" );
+		String routes = ""; 
+		int visited = 0;
 		for(Label solution : result.getIntegerSolution()) {
-			writer.write("\t" + solution.getRoute());
+			visited += solution.getNbVisitedNodes()-2;
+			routes += "\t" + solution.getRoute();
 		}
 		
+		writer.write( visited + "" );
+		writer.write( routes );
 		// End line
 		writer.write("\n");
 		// Write down results
@@ -475,7 +531,6 @@ public class Main {
 	 * @return
 	 */
 	public static ESPPRCResult labellingAlgorithm(EspprcInstance instance, int timeLimit, int labelLimit) {
-        
         // We start the label correcting algorithm
         System.out.println("START: Generating feasible routes");
         
@@ -484,9 +539,7 @@ public class Main {
         
         // We start measuring the algorithm elapsed time
 		long startTime = System.nanoTime();
-		
         ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit, labelLimit);
-
 		long endTime = System.nanoTime();
 
     	// Label correcting algorithm has finished
@@ -496,7 +549,8 @@ public class Main {
 		long timeElapsed = endTime - startTime;
 		 
 		// Get solution information
-    	ArrayList<Label> depotLabels = nodeLabels[nodeLabels.length - 1];
+		int depotIndex = instance.isDuplicateOrigin() ? nodeLabels.length - 1 : 0;
+    	ArrayList<Label> depotLabels = nodeLabels[depotIndex];
 
     	int nbFeasibleRoutes = depotLabels.size();
 		
@@ -506,7 +560,7 @@ public class Main {
     			minCostRoute = currentLabel;
     		}
     	}
-    	
+		
     	int nbGeneratedLabels = 0;
     	for( ArrayList<Label> labelList : nodeLabels ) {
     		nbGeneratedLabels += labelList.size();
@@ -581,6 +635,17 @@ public class Main {
 		instances[6] = "RC107.txt";
 		instances[7] = "RC108.txt";
 
+		return instances;
+	}
+	
+	
+	private static String[] getAllInstances() {
+		String[] instances = new String[29];
+		
+		System.arraycopy(getRInstances(), 0, instances, 0, 12);
+		System.arraycopy(getCInstances(), 0, instances, 12, 9);
+		System.arraycopy(getRCInstances(), 0, instances, 21, 8);
+		
 		return instances;
 	}
 	

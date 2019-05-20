@@ -66,6 +66,11 @@ public class VRPTWResult {
 	private double reducedCost;
 	
 	/**
+	 * Flag to set if the column generation algorithm found a solution
+	 */
+	private boolean finished;
+	
+	/**
 	 * 
 	 * @param routes
 	 * @param objective
@@ -73,7 +78,7 @@ public class VRPTWResult {
 	 * @param iterations
 	 * @param reducedCost
 	 */
-	public VRPTWResult(ArrayList<Label> routes, double objective, double xSum, int initialRoutes, int generatedRoutes, int iterations, double reducedCost) {
+	public VRPTWResult(ArrayList<Label> routes, double objective, double xSum, int initialRoutes, int generatedRoutes, int iterations, double reducedCost, boolean finished) {
 		this.setRelaxedSolution(routes);
 		this.setLowerBound(objective);
 		this.setxSum(xSum);
@@ -81,6 +86,7 @@ public class VRPTWResult {
 		this.setGeneratedRoutes(generatedRoutes);
 		this.setIterations(iterations);
 		this.setReducedCost(reducedCost);
+		this.setFinished(finished);
 	}
 	
 	// ============== GETTERS & SETTERS ============
@@ -179,5 +185,13 @@ public class VRPTWResult {
 
 	public void setIntegerSolution(ArrayList<Label> integerSolution) {
 		this.integerSolution = integerSolution;
+	}
+
+	public boolean isFinished() {
+		return finished;
+	}
+
+	public void setFinished(boolean finished) {
+		this.finished = finished;
 	}
 }

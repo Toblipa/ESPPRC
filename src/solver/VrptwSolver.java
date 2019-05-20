@@ -71,6 +71,9 @@ public class VrptwSolver {
             int U = instance.getVehicles();
             // A large number
 			double M  = 1000;
+			// If we relax the elementary contraints
+			boolean relax = true;
+			
             
             // min sum_{r_k \in \Omega} {c_k * x_k} + e * M
             // s.t. sum_{r_k \in \Omega} {a_{ik} * x_k} = 1, (\forall v_i \in  V) (cn)
@@ -89,13 +92,13 @@ public class VrptwSolver {
             
             // > Constraints
             // Node constraints
-    		IloRange[] nodeConstraints = getNodesConstraints(true); 
+    		IloRange[] nodeConstraints = getNodesConstraints( relax ); 
     		
     		// Capacity constraint
     		expression = cplex.linearNumExpr();
     		expression.addTerm(-1, extraVehicles);
     		IloRange capConstraint = cplex.addRange(-Double.MAX_VALUE, expression, U);
-                		
+            
     		// > Add initial columns
     		ArrayList<Label> initialCols = getInitialCols();
     		addColumns(initialCols, x, objective, nodeConstraints, capConstraint);
@@ -113,6 +116,7 @@ public class VrptwSolver {
     		
     		// > Start column generation loop
     		int iteration = 0;
+    		boolean finished = false;
             do {
             	iteration++;
                 // ======================== Solve Relaxed Master Problem ==============================
@@ -128,8 +132,13 @@ public class VrptwSolver {
                 // ======================== Solve Subproblem ==============================
         		
 	            // Update maximum label quantity for the pricing problem
-        		if ( iteration > 1 && minCostRoute.getCost() > costGap && maxLabels > 0) {
-        			maxLabels = 0;
+        		if ( iteration > 1 && minCostRoute.getCost() > costGap) {
+        			if(maxLabels  > 0) {
+        				maxLabels = 0;
+        			}
+        			else {
+        				finished = true;
+        			}
         		}
         		else if( maxLabels == 0 ) {
         			maxLabels = labelLimit;
@@ -145,7 +154,7 @@ public class VrptwSolver {
     			System.out.println("Generated route " + minCostRoute.getRoute());
     			System.out.println("With reduced cost " + minCostRoute.getCost());
     			
-            }while( (maxLabels > 0 || minCostRoute.getCost() < costGap) && System.currentTimeMillis() < endTime );
+            }while( !finished && System.currentTimeMillis() < endTime );
             
             if(writeDuals) {
             	writer.close();
@@ -164,7 +173,8 @@ public class VrptwSolver {
             		initialCols.size(),
             		columns.size(),
             		iteration,
-            		minCostRoute.getCost()
+            		minCostRoute.getCost(),
+            		finished
             		);
             
             // ======================== Solve Integer Master Problem ==============================
@@ -172,7 +182,7 @@ public class VrptwSolver {
             mipConversion( x, extraVehicles );
             
 			// We limit time for integer problem
-			cplex.setParam( IloCplex.DoubleParam.TiLim, 60 );
+			cplex.setParam( IloCplex.DoubleParam.TiLim, 90 );
 			cplex.solve();
 			
 			double upperBound = cplex.getObjValue();
@@ -220,12 +230,9 @@ public class VrptwSolver {
 	 * @throws IloException
 	 */
 	private IloRange[] getNodesConstraints(boolean relaxed) throws IloException {
-		IloRange[] contn = new IloRange[instance.getNbNodes()];
+		IloRange[] contn = new IloRange[instance.getNbNodes()-2];
 		
-		contn[0] = cplex.addRange(1, Double.MAX_VALUE);
-		contn[instance.getNbNodes()-1] = cplex.addRange(1, Double.MAX_VALUE);
-		
-		for(int  i = 1; i < instance.getNbNodes()-1; i++) {
+		for(int  i = 0; i < instance.getNbNodes()-2; i++) {
 			if(relaxed) {
 				contn[i] = cplex.addRange(1, Double.MAX_VALUE);
 			}else {
@@ -412,8 +419,8 @@ public class VrptwSolver {
 		for(Label route : routes) {
 			IloColumn col = cplex.column( obj, route.getRouteDistance(instance) );
 			
-			for(int node = 0; node < instance.getNbNodes(); node++) {
-				int visit = route.isVisited( node ) ? 1:0;
+			for(int node = 0; node < instance.getNbNodes()-2; node++) {
+				int visit = route.isVisited( node + 1) ? 1:0;
 				col = col.and( cplex.column(contn[node], visit) );
 			}
 			
