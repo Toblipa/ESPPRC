@@ -125,13 +125,6 @@ public class Label implements Comparable<Label>{
 		
 		return previousLabel.getRoute() + id;
 		
-//		Customer prevNode = previousLabel.getCurrent();
-//		
-//		if (prevNode.getId() == 0) return "";
-//
-//		String id = current.isDepot() ? prevNode.getId()+"" : prevNode.getId()+", ";
-//
-//		return previousLabel.getRoute() + id;
 	}
 	
 	/**

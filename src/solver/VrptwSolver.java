@@ -75,10 +75,10 @@ public class VrptwSolver {
 			boolean relax = true;
 			
             
-            // min sum_{r_k \in \Omega} {c_k * x_k} + e * M
-            // s.t. sum_{r_k \in \Omega} {a_{ik} * x_k} = 1, (\forall v_i \in  V) (cn)
-            //		sum_{r_k \in \Omega} {x_k} - e <= U, (cc1)
-            //		e >= 0. (cc2)
+            // min sum_{r_k \in \Omega} {c_k * x_k} + y * M
+            // s.t. \sum_{r_k \in \Omega} {a_{ik} * x_k} \geq 1, (\forall v_i \in  V) (cn)
+            //		\sum_{r_k \in \Omega} {x_k} - y <= U, (cc1)
+            //		y >= 0. (cc2)
 			
     		// Decision variables
 			ArrayList<IloNumVar> x = new ArrayList<IloNumVar>();
@@ -98,9 +98,10 @@ public class VrptwSolver {
     		expression = cplex.linearNumExpr();
     		expression.addTerm(-1, extraVehicles);
     		IloRange capConstraint = cplex.addRange(-Double.MAX_VALUE, expression, U);
-            
-    		// > Add initial columns
+    		
+    		// > Add initial columns    		
     		ArrayList<Label> initialCols = getInitialCols();
+    		
     		addColumns(initialCols, x, objective, nodeConstraints, capConstraint);
     		
     		// Write dual values		
@@ -122,9 +123,10 @@ public class VrptwSolver {
                 // ======================== Solve Relaxed Master Problem ==============================
 	            cplex.solve();
 	            System.out.println("Objective: " + cplex.getObjValue());
+	            System.out.println("Capacity dual: "+cplex.getDual(capConstraint));
 	            
 	            // Get dual values        
-	            instance.updateDualValues( cplex.getDuals(nodeConstraints) );
+	            instance.updateDualValues( cplex.getDuals(nodeConstraints), cplex.getDual(capConstraint));
 	            
 	            // Write down dual values
 	            writeDualValues(writer, nodeConstraints);
@@ -144,11 +146,22 @@ public class VrptwSolver {
         			maxLabels = labelLimit;
         		}
 	            
-	            ArrayList<Label> newRoutes = getNewColumns(SPTimeLimit, maxLabels);
-	            minCostRoute = newRoutes.get(0);
+    			ArrayList<Label> newRoutes = getNewColumns(SPTimeLimit, maxLabels);
+            	minCostRoute = newRoutes.get(0);
+            
+            	// Add columns
+				addColumns(newRoutes, x, objective, nodeConstraints, capConstraint);
+				
+				instance.deleteRouteNodes(minCostRoute);
+        		for(int i = 0; i < 5; i++) {
+        			ArrayList<Label> moreRoutes = getNewColumns(SPTimeLimit, maxLabels);
+	            	Label newMinCostRoute = moreRoutes.get(0);
 	            
-	            // Add columns
-    			addColumns(newRoutes, x, objective, nodeConstraints, capConstraint);
+	            	// Add columns
+    				addColumns(moreRoutes, x, objective, nodeConstraints, capConstraint);
+    				instance.deleteRouteNodes(newMinCostRoute);
+        		}
+        		instance.buildSuccessors();
         		
     			System.out.println("Iteration nº " + iteration);
     			System.out.println("Generated route " + minCostRoute.getRoute());
@@ -449,8 +462,10 @@ public class VrptwSolver {
 		}
         ArrayList<Label>[] nodeLabels = solver.genFeasibleRoutes(timeLimit, labelLimit);
         
+        int depotIndex = instance.isDuplicateOrigin() ? nodeLabels.length - 1 : 0;
+        
 		// Get solution information
-    	ArrayList<Label> depotLabels = nodeLabels[nodeLabels.length - 1];
+    	ArrayList<Label> depotLabels = nodeLabels[depotIndex];
     	
     	ArrayList<Label> negCostRoutes = new ArrayList<Label>();
 		for ( Label currentLabel : depotLabels ) {
@@ -484,35 +499,55 @@ public class VrptwSolver {
 		ArrayList<Label> result = new ArrayList<Label>();
 
 		while(nbCoveredNodes < instance.getNbNodes()) {
-			Label origin = new Label(instance);
-			Customer node = origin.getCurrent();
-			
-			while( origin.getNbUnreachableNodes() < instance.getNbNodes() ) {				
-				ArrayList<Customer> successors = instance.getSuccessors()[node.getId()];
+			Label path = new Label(instance);
+			Customer node = path.getCurrent();
+			ArrayList<Customer> successors = new ArrayList<Customer>(instance.getSuccessors()[node.getId()]);
+			while( path.getNbUnreachableNodes() < instance.getNbNodes()) {
 				Collections.sort(successors);
-							
-				Customer nextNode = successors.get(0);
-				int index = 0;	
-				while( !origin.isReachable(nextNode) || coveredNodes[nextNode.getId()] ) {
-					index++;
-					nextNode = successors.get(index);
-				}
+				Customer nextNode = getNextReachable(path, coveredNodes, successors);
 				
-				origin = origin.extendLabel(nextNode, instance);
+				path = path.extendLabel(nextNode, instance);
 				
-				if( !nextNode.isDepot() ) {
+				if( !nextNode.isDepot() && nextNode.getId()!=0) {
 					nbCoveredNodes++;
 					coveredNodes[nextNode.getId()] = true;
 				}
+				else {
+					break;
+				}
+				
+				successors = instance.getSuccessors()[nextNode.getId()];
 				node = nextNode;
 			}
-			
-			result.add(origin);
+			result.add(path);
 		}
-		
 		return result;
 	}
 	
+	/**
+	 * Get the next reachable node from the given path that has not visited before
+	 * @param path
+	 * @param coveredNodes
+	 * @param successors
+	 * @return
+	 */
+	private Customer getNextReachable(Label path, boolean[] coveredNodes, ArrayList<Customer> successors) {
+		int index = 0;
+		if(!instance.isDuplicateOrigin() && successors.size() > 1 && path.getCurrent().getId() != 0) {
+			index++;
+		}
+		
+		Customer nextNode = successors.get(index);
+		while( !path.isReachable(nextNode) || coveredNodes[nextNode.getId()] ) {
+			index++;
+			if(index == successors.size()) {
+				index = 0;
+			}
+			nextNode = successors.get(index);
+		}
+		return nextNode;
+	}
+
 	/**
 	 * Generate default columns where one vehicle visits one node 
 	 * @return

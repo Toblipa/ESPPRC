@@ -125,7 +125,7 @@ public class EspprcInstance {
 					euclidianDistance =  Math.floor(euclidianDistance * 10) / 10;
 					
 					int randomInt = rand.nextInt(max - min + 1) + min;
-					if( !simulate ) { randomInt = 0; }
+					if( !simulate || i > 0) { randomInt = 0; }
 
 					this.cost[i][j] = ( euclidianDistance * costFactor) - randomInt;
 					this.distance[i][j] = euclidianDistance * timeFactor;
@@ -144,35 +144,35 @@ public class EspprcInstance {
 	 */
 	@SuppressWarnings("unchecked")
 	public void buildSuccessors() {
-		successors = new ArrayList[nodes.length];
+		this.successors = new ArrayList[this.nodes.length];
 		
-		for(int i = 0; i < nodes.length; i++) {
-			Customer node = nodes[i];
+		for(int i = 0; i < this.nodes.length; i++) {
+			Customer node = this.nodes[i];
 			ArrayList<Customer> successorList = new ArrayList<Customer>();
 
-			successors[i] = new ArrayList<Customer>();
+			this.successors[i] = new ArrayList<Customer>();
 			
 			// We check every node to see if it is a valid successor
-			int startNode = duplicateOrigin ? 1 : 0;
-			for(int n = startNode; n < nodes.length; n++) {
-				Customer nextNode = nodes[n];
+			int startNode = this.duplicateOrigin ? 1 : 0;
+			for(int n = startNode; n < this.nodes.length; n++) {
+				Customer nextNode = this.nodes[n];
 				
 				// We compute the time needed to reach the node which corresponds to
 				// the minimal time to complete the service in the current node + the time needed to get to the next node
-				double timeToReach = node.getStart() + node.getServiceTime() + distance[node.getId()][nextNode.getId()];
+				double timeToReach = node.getStart() + node.getServiceTime() + this.distance[node.getId()][nextNode.getId()];
 				
 				// Check if it is possible
 				if( i != n && nextNode.getEnd() >= timeToReach ) {
-					successors[i].add( nextNode );
+					this.successors[i].add( nextNode );
 					successorList.add( nextNode );
 				}
 			}
 		}
 		
 		// The depot has no successors
-		if( duplicateOrigin ) {
-			successors[successors.length-1] = new ArrayList<Customer>();
-			successors[0].remove( successors[0].size()-1 );
+		if( this.duplicateOrigin ) {
+			this.successors[this.successors.length-1] = new ArrayList<Customer>();
+			this.successors[0].remove( this.successors[0].size()-1 );
 		}
 	}
 	
@@ -181,13 +181,16 @@ public class EspprcInstance {
 	 * for the VRPTW subproblem
 	 * @param pi
 	 */
-	public void updateDualValues(double[] pi) {
+	public void updateDualValues(double[] pi, double pc) {
 		int duplicated = duplicateOrigin ? 1 : 0;
         for (int i = 1; i < this.getNbNodes() - duplicated; i++) {
             for (int j = 0; j < this.getNbNodes(); j++) {
           	  this.cost[i][j] = this.distance[i][j] - pi[i-1];
             }
         }
+//        for (int j = 0; j < this.getNbNodes(); j++) {
+//        	this.cost[0][j] = this.distance[0][j] + pc;
+//        }
 	}
 	
 	/**

@@ -136,14 +136,13 @@ public class Resources implements Comparable<Resources>{
 			this.addTime( previousNode.getServiceTime() + arcDistance );
 		}
 		
-		// Add demand resource
-		if(currentNode.getId() != 0) {
-			this.addDemand( currentNode.getDemand() );
-		}
-		else {
-			// If origin then reset demand consumption
+		// If origin then reset demand consumption
+		if( previousNode.getId() == 0 ) {
 			this.demand = 0;
 		}
+		
+		// Add demand resource
+		this.addDemand( currentNode.getDemand() );
 		
 		// Update visited nodes
 		if(currentNode.getId() != 0) {

@@ -19,12 +19,12 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		
 		// Default options
-		int nbClients = 100;
+		int nbClients = 25;
 		int useCplex = 0;
 		int timeLimit = 600;
 		int labelLimit = 100;
-		String instanceType = "R104";
-		String directory = "./instances/solomon_"+nbClients+"/";
+		String instanceType = "C101";
+		String directory = "./instances/solomon/";
 		String problem = "Master";
 		boolean writeColumns = false;
 		
@@ -33,7 +33,7 @@ public class Main {
 			for(String arg : args) {
 				if(arg.contains("-d")) {
 					directory = arg.substring(3);
-				}
+				} 
 				else if(arg.contains("-instance")) { 
 					instanceType = arg.substring(10);
 				}
@@ -97,7 +97,7 @@ public class Main {
 
 			// Reading the instances
 			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
-			reader.read();
+			reader.read(nbClients);
 
 			// Preprocessing nodes
 			instance.buildEdges( true );
@@ -152,12 +152,13 @@ public class Main {
 
 			// Reading the instances
 			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
-			reader.read();
+			reader.read(nbClients);
 
 			// Preprocessing nodes
 			instance.buildEdges(false);
 			instance.buildSuccessors();
 			instance.setName( solomonInstances[i].substring(0, solomonInstances[i].length() - 4) );
+//			instance.setVehicles(14);
 
 			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
 
@@ -203,7 +204,7 @@ public class Main {
 			
 			// Reading the instances
 			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
-			reader.read();
+			reader.read(nbClients);
 			
 			// Preprocessing nodes
 			instance.buildEdges(true);
@@ -316,7 +317,7 @@ public class Main {
 			
 			// Reading the instances
 			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
-			reader.read();
+			reader.read(nbClients);
 			
 			// Preprocessing nodes
 			instance.buildEdges(true);
