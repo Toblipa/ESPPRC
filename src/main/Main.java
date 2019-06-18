@@ -78,11 +78,11 @@ public class Main {
 	
 	/**
 	 * 
-	 * @param directory
-	 * @param nbClients
-	 * @param timeLimit
-	 * @param labelLimit
-	 * @param solomonInstances
+	 * @param directory The path where the instance files should be found
+	 * @param nbClients The number of clients we should read. It stops automatically if there are no more clients
+	 * @param timeLimit The algorithm resolution time limit
+	 * @param labelLimit The limit of labels we can assign to a single node
+	 * @param solomonInstances An array with the name of the instances to run
 	 */
 	private static void runMultiTrip(String directory, int nbClients, int timeLimit, int labelLimit,
 			String[] solomonInstances) {
@@ -122,14 +122,14 @@ public class Main {
 
 	/**
 	 * 
-	 * @param directory
-	 * @param instanceType
-	 * @param nbClients
-	 * @param timeLimit
-	 * @param labelLimit
-	 * @param solomonInstances
-	 * @param writeColumns
-	 * @throws IOException 
+	 * @param directory The path where the instance files should be found
+	 * @param instanceType The nature of the data found in the instace. This is for result files labelling purposes
+	 * @param nbClients The number of clients we should read. It stops automatically if there are no more clients
+	 * @param timeLimit The algorithm resolution time limit
+	 * @param labelLimit The limit of labels we can assign to a single node
+	 * @param solomonInstances  An array with the name of the instances to run
+	 * @param writeColumns Set to "true" if you would like to generate a file with all the columns added to de Master Problem
+	 * @throws IOException File names could not be found
 	 */
 	@SuppressWarnings("unused")
 	private static void runMasterSolver(String directory, String instanceType, int nbClients, int timeLimit,
@@ -145,22 +145,22 @@ public class Main {
 
 		FileWriter writer = new FileWriter(file, true);
 
-		for(int i = 0; i < solomonInstances.length; i++) {
+		for(String instanceName : solomonInstances){
 			// Creating the instance
 			EspprcInstance instance = new EspprcInstance();
 			instance.setDuplicateOrigin(true);
 
 			// Reading the instances
-			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
+			SolomonReader reader = new SolomonReader(instance, directory+instanceName);
 			reader.read(nbClients);
 
 			// Preprocessing nodes
 			instance.buildEdges(false);
 			instance.buildSuccessors();
-			instance.setName( solomonInstances[i].substring(0, solomonInstances[i].length() - 4) );
+			instance.setName( instanceName.substring(0, instanceName.length() - 4) );
 //			instance.setVehicles(14);
 
-			System.out.println("\n>>> Solving instance "+solomonInstances[i]);
+			System.out.println("\n>>> Solving instance "+instanceName);
 
 			// Introduction
 			System.out.println("Solving the instance for "+instance.getNodes().length+" nodes");
@@ -196,14 +196,14 @@ public class Main {
 	 */
 	private static void runLabelWriter(String directory, int nbClients, int timeLimit, int labelLimit, String[] solomonInstances)
 			throws IOException {
-		
-		for(int i = 0; i < solomonInstances.length; i++) {
+
+		for(String instanceName : solomonInstances){
 			// Creating the instance
 			EspprcInstance instance = new EspprcInstance();
 			instance.setDuplicateOrigin(true);
 			
 			// Reading the instances
-			SolomonReader reader = new SolomonReader(instance, directory+solomonInstances[i]);
+			SolomonReader reader = new SolomonReader(instance, directory+instanceName);
 			reader.read(nbClients);
 			
 			// Preprocessing nodes
@@ -211,7 +211,7 @@ public class Main {
 			instance.buildSuccessors();
 			
 	        // Introduction
-			System.out.println("\n>>> Solving instance " + solomonInstances[i] + "\n" +
+			System.out.println("\n>>> Solving instance " + instanceName + "\n" +
 					"Solving the instance for " + instance.getNodes().length+" nodes");
 			
 	        LabellingSolver solver = new LabellingSolver(instance);
@@ -233,7 +233,7 @@ public class Main {
 	    	}
 			
 			// Create directory
-			String folderName = solomonInstances[i].substring(0, solomonInstances[i].length()-4);
+			String folderName = instanceName.substring(0, instanceName.length()-4);
 			folderName = folderName + "-" + nbClients;
 			File folder = new File( folderName );
 			folder.mkdirs();
@@ -356,8 +356,8 @@ public class Main {
 	
 	/**
 	 * Returns an array of string containg all the instances of the given type
-	 * @param instanceType
-	 * @return
+	 * @param instanceType The nature of the instances to read
+	 * @return An array of strings containing file names
 	 */
 	private static String[] getSelectedInstances(String instanceType) {
 		
@@ -456,8 +456,8 @@ public class Main {
 	
 	/**
 	 * 
-	 * @param file
-	 * @throws IOException
+	 * @param file The instance file
+	 * @throws IOException Throws exception if file is not found or writer has not been created properly
 	 */
 	private static void writeMasterTitles(File file) throws IOException {
 		FileWriter writer = new FileWriter(file);
@@ -528,7 +528,9 @@ public class Main {
 
 	/**
 	 * Run the labelling algorithm described in (Feillet D, 2004)
-	 * @param fileName
+	 * @param instance
+	 * @param timeLimit
+	 * @param labelLimit
 	 * @return
 	 */
 	public static ESPPRCResult labellingAlgorithm(EspprcInstance instance, int timeLimit, int labelLimit) {
@@ -578,7 +580,8 @@ public class Main {
 	
 	/**
 	 * Run the linear program to solve an ESPPRC using cplex
-	 * @param fileName
+	 * @param instance
+	 * @param timeLimit
 	 * @return
 	 */
 	public static ESPPRCResult solveESPPRC(EspprcInstance instance, int timeLimit) {

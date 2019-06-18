@@ -42,47 +42,24 @@ public class ESPPRCResult{
 	public String getRoute() {
 		return route;
 	}
-	public void setRoute(String route) {
-		this.route = route;
-	}
 	
 	public double getCost() {
 		return cost;
 	}
 	
-	public void setCost(double cost) {
-		this.cost = cost;
-	}
-	
 	public long getTimeElapsed() {
 		return timeElapsed;
-	}
-	
-	public void setTimeElapsed(long timeElapsed) {
-		this.timeElapsed = timeElapsed;
 	}
 
 	public int getNbVisitedNodes() {
 		return nbVisitedNodes;
 	}
 
-	public void setNbVisitedNodes(int nbVisitedNodes) {
-		this.nbVisitedNodes = nbVisitedNodes;
-	}
-
 	public int getNbFeasibleRoutes() {
 		return nbFeasibleRoutes;
 	}
 
-	public void setNbFeasibleRoutes(int nbFeasibleRoutes) {
-		this.nbFeasibleRoutes = nbFeasibleRoutes;
-	}
-
 	public int getNbTotalRoutes() {
 		return nbTotalRoutes;
-	}
-
-	public void setNbTotalRoutes(int nbTotalRoutes) {
-		this.nbTotalRoutes = nbTotalRoutes;
 	}
 }

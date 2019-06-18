@@ -38,7 +38,7 @@ public class Label implements Comparable<Label>{
 	}
 	
 	/**
-	 * Instanciates a new label on the given node
+	 * Instantiates a new label on the given node
 	 * @param node
 	 */
 	public Label(Customer node) {

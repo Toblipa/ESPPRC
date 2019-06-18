@@ -5,14 +5,14 @@ import java.util.Iterator;
 import java.util.Random;
 
 /**
- * Represntatio of a routing instance
+ * Representation of a routing instance
  * @author pablo
  *
  */
 public class EspprcInstance {
 	
 	/**
-	 * The list of nodes begining with the origin
+	 * The list of nodes beginning with the origin
 	 */
 	private Customer[] nodes;
 	
@@ -102,7 +102,8 @@ public class EspprcInstance {
 	/**
 	 * To stock the edge costs and distance in a matrix
 	 * It ramdomly generates negative costs for the edges if simulate is active
-	 * @param simulate
+	 *
+	 * @param simulate Set to "true" to randomly add negative costs to the edges
 	 */
 	public void buildEdges(boolean simulate) {
 		// For simulation purposes
@@ -148,7 +149,6 @@ public class EspprcInstance {
 		
 		for(int i = 0; i < this.nodes.length; i++) {
 			Customer node = this.nodes[i];
-			ArrayList<Customer> successorList = new ArrayList<Customer>();
 
 			this.successors[i] = new ArrayList<Customer>();
 			
@@ -164,7 +164,6 @@ public class EspprcInstance {
 				// Check if it is possible
 				if( i != n && nextNode.getEnd() >= timeToReach ) {
 					this.successors[i].add( nextNode );
-					successorList.add( nextNode );
 				}
 			}
 		}
@@ -178,8 +177,8 @@ public class EspprcInstance {
 	
 	/**
 	 * Given the dual values, it updates the cost of an edge
-	 * for the VRPTW subproblem
-	 * @param pi
+	 * for the VRPTW sub-problem
+	 * @param pi The dual variables
 	 */
 	public void updateDualValues(double[] pi, double pc) {
 		int duplicated = duplicateOrigin ? 1 : 0;
