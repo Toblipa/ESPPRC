@@ -148,17 +148,6 @@ public class VrptwSolver {
                 // Add columns
                 addColumns(newRoutes, x, objective, nodeConstraints, capConstraint);
 
-                instance.deleteRouteNodes(minCostRoute);
-                for (int i = 0; i < 5; i++) {
-                    ArrayList<Label> moreRoutes = getNewColumns(SPTimeLimit, maxLabels);
-                    Label newMinCostRoute = moreRoutes.get(0);
-
-                    // Add columns
-                    addColumns(moreRoutes, x, objective, nodeConstraints, capConstraint);
-                    instance.deleteRouteNodes(newMinCostRoute);
-                }
-                instance.buildSuccessors();
-
                 System.out.println("Iteration nº " + iteration);
                 System.out.println("Generated route " + minCostRoute.getRoute());
                 System.out.println("With reduced cost " + minCostRoute.getCost());

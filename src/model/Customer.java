@@ -14,6 +14,16 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
     private int demand;
     
     /**
+     * Stability time for the required product of the client
+     */
+    private double stabilityTime;
+    
+    /**
+     * Time needed to produce the required product of the client
+     */
+    private double productionTime;
+    
+    /**
      * The start time of the time window
      */
     private double start;
@@ -81,9 +91,24 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
 	public void setServiceTime(double serviceTime) {
 		this.serviceTime = serviceTime;
 	}
-
 	
-    public boolean isDepot() {
+    public double getStabilityTime() {
+		return stabilityTime;
+	}
+
+	public void setStabilityTime(double stabilityTime) {
+		this.stabilityTime = stabilityTime;
+	}
+
+	public double getProductionTime() {
+		return productionTime;
+	}
+
+	public void setProductionTime(double productionTime) {
+		this.productionTime = productionTime;
+	}
+
+	public boolean isDepot() {
 		return isDepot;
 	}
 

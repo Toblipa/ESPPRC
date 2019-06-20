@@ -94,6 +94,71 @@ public class LabellingSolver {
 		return labels;
 	}
 	
+	public ArrayList<Label>[] genFeasibleSchedules(int timeLimit, int labelLimit) {
+		
+		// Initialization
+		@SuppressWarnings("unchecked")
+		ArrayList<Label>[] labels = new ArrayList[instance.getNbNodes()];
+		
+		// Origin node
+		Label originLabel = new Label( instance );
+		labels[0] = new ArrayList<Label>();
+		labels[0].add( originLabel );
+		
+		// Intitialize customer labels
+		for(int i = 1; i < instance.getNbNodes(); i++) {
+			labels[i] = new ArrayList<Label>();
+		}
+		
+		// Customers waiting to be treated
+		Queue<Customer> E = new LinkedList<Customer>();	
+		E.add( instance.getNode(0) );
+		
+		// To stop the algorithm at a certain time
+		long endTime = System.currentTimeMillis() + timeLimit*1000;
+		boolean inTime = true;
+		// Repeat until E is empty
+		do {
+			// We choose a node in the waiting list
+			Customer currentNode = E.poll();
+			
+			// Exploration of the successors of a node
+			ArrayList<Customer> nodeSuccessors = this.instance.getSuccessors()[currentNode.getId()];
+			for(Customer currentSuccessor : nodeSuccessors) {
+
+				// Set of labels extended from currentNode to currentSuccessor
+				ArrayList<Label> extendedLabels = new ArrayList<Label>();
+				
+				// We extend all currentNode labels
+				int customerId = currentNode.getId();
+				for(Label currentLabel : labels[customerId]) {
+					if( !currentLabel.isExtended() && currentLabel.isReachable( currentSuccessor ) ) {
+						Label extendedLabel = currentLabel.extendLabel( currentSuccessor, this.instance );
+						extendedLabels.add(extendedLabel);
+					}
+				}
+				
+				ArrayList<Label> successorLabels = labels[currentSuccessor.getId()];
+				
+				boolean resultEFF = this.methodEFF2(successorLabels, extendedLabels, labelLimit);
+
+				// End EFF
+				if( resultEFF ) {
+					E.remove( currentSuccessor );
+					E.add( currentSuccessor );
+				}
+			}
+			// Set labels to extended
+			labels[currentNode.getId()].stream().forEach( label -> label.setExtended(true) );
+			
+			if( timeLimit > 0 ) {
+				inTime = System.currentTimeMillis() < endTime;
+			}
+		}while( !E.isEmpty() && inTime );
+		
+		return labels;
+	}
+	
 	/**
 	 * The following function corresponds to the EEF method presented in (Feillet D, 2004)
 	 * 

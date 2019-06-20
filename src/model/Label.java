@@ -143,6 +143,26 @@ public class Label implements Comparable<Label>{
 		return previousLabel.getRouteDistance(instance) + instance.getDistance(prevNode, curNode);
 	}
 	
+	public double getStartingTime(EspprcInstance instance) {
+		int curNode = current.getId();
+		int prevNode = previousLabel.getCurrent().getId();
+		if(prevNode == 0) {
+			return this.getResources().getTime() - instance.getDistance(prevNode, curNode);
+		}
+		return previousLabel.getStartingTime(instance);
+	}
+	
+	public double getVisitTime(int node) {
+		int curNode = current.getId();
+		if(curNode == node) {
+			return this.getResources().getTime();
+		}
+		if(previousLabel == null) {
+			return 0;
+		}
+		return previousLabel.getVisitTime(node);
+	}
+	
 	/**
 	 * Check if both paths are equal
 	 * @param route

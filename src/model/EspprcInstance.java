@@ -59,6 +59,21 @@ public class EspprcInstance {
 	}
 	
 	/**
+	 * Constructor by copy
+	 * @param instance
+	 */
+	public EspprcInstance(EspprcInstance instance) {
+		this.capacity = instance.getCapacity();
+		this.cost = instance.getCostMatrix().clone();
+		this.distance = instance.getDistanceMatrix().clone();
+		this.duplicateOrigin = instance.isDuplicateOrigin();
+		this.name = instance.getName();
+		this.nbVehicles = instance.getVehicles();
+		this.nodes = instance.getNodes().clone();
+		this.successors = instance.getSuccessors().clone();
+	}
+
+	/**
 	 * Count all the possible sucessor nodes for each node
 	 * @return Number of edges in the current graph
 	 */
@@ -126,7 +141,8 @@ public class EspprcInstance {
 					euclidianDistance =  Math.floor(euclidianDistance * 10) / 10;
 					
 					int randomInt = rand.nextInt(max - min + 1) + min;
-					if( !simulate || i > 0) { randomInt = 0; }
+					
+					if( !simulate || i == 0) { randomInt = 0; }
 
 					this.cost[i][j] = ( euclidianDistance * costFactor) - randomInt;
 					this.distance[i][j] = euclidianDistance * timeFactor;
@@ -172,6 +188,50 @@ public class EspprcInstance {
 		if( this.duplicateOrigin ) {
 			this.successors[this.successors.length-1] = new ArrayList<Customer>();
 			this.successors[0].remove( this.successors[0].size()-1 );
+		}
+	}
+	
+	public void buildScheduling(boolean simulate) {
+		// For simulation purposes
+		int max = 20;
+		int min = 0;
+		Random rand = new Random(0);
+
+		// We introduce a time factor to model to go through the distance
+		double timeFactor = 1;
+
+		int nbNodes = this.getNodes().length;
+		this.cost = new double[nbNodes][nbNodes];
+		this.distance = new double[nbNodes][nbNodes];
+		for(int i=0; i < nbNodes; i++) {
+			Customer currentNode = this.getNode(i);
+			
+			for(int j=0; j < nbNodes; j++) {
+				if( i != j ) {
+					int randomInt = rand.nextInt(max - min + 1) + min;
+					if( !simulate || i == 0) { randomInt = 0; }
+
+					this.cost[i][j] = -randomInt;
+//					this.distance[i][j] = 0;
+				}
+			}
+			
+			// Test values 
+			currentNode.setStabilityTime(currentNode.getDemand()*10);
+			currentNode.setProductionTime( currentNode.getServiceTime() * 2 );
+			
+			double productionStart = currentNode.getStart() - currentNode.getProductionTime() - currentNode.getStabilityTime();
+			double productionEnd = currentNode.getEnd() - this.getNode(0).distance(currentNode)*timeFactor;
+			
+			currentNode.setStart( productionStart > 0 ? productionStart : 0 );
+			currentNode.setEnd( productionEnd > 0 ? productionEnd : 0 );
+			currentNode.setServiceTime( currentNode.getProductionTime() );
+			currentNode.setDemand( 0 );
+		}
+		
+		if( this.duplicateOrigin ) {
+			// The origin & the depot are the same
+			this.cost[0][nbNodes-1] = 0;
 		}
 	}
 	
