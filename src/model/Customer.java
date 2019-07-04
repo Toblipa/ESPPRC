@@ -34,7 +34,7 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
     private double end;
     
     /**
-     * The serice time required on this node
+     * The service time required on this node
      */
     private double serviceTime;
     
@@ -42,6 +42,18 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
 	 * Flag to check if it is the last node
 	 */
 	private boolean isDepot = false;
+	
+	/**
+	 * A dual weight correspondig to "delta" dual variables
+	 * for pricing resolution reasons
+	 */
+	private double stabilityDual;
+	
+	/**
+	 * A sual weight corresponding to "epsilon" dual variables
+	 * for pricing resolution reasons
+	 */
+	private double precedenceDual;
 	
 	/**
 	 * 
@@ -138,5 +150,21 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
 		
 		double comparison = this.start - that.getStart();
 		return (int) Math.signum(comparison);
+	}
+
+	public double getStabilityDual() {
+		return stabilityDual;
+	}
+
+	public void setStabilityDual(double stabilityDual) {
+		this.stabilityDual = stabilityDual;
+	}
+
+	public double getPrecedenceDual() {
+		return precedenceDual;
+	}
+
+	public void setPrecedenceDual(double precedenceDual) {
+		this.precedenceDual = precedenceDual;
 	}
 }

@@ -1,6 +1,6 @@
 package model;
 
-public class Resources implements Comparable<Resources>{
+public class ResourcesProduction implements Comparable<ResourcesProduction>{
 	
 	private double cost;
 
@@ -34,7 +34,7 @@ public class Resources implements Comparable<Resources>{
 	 * Initialize the origin resources
 	 * @param instance
 	 */
-	public Resources(EspprcInstance instance) {
+	public ResourcesProduction(EspprcInstance instance) {
 		unreachableVector = new boolean[instance.getNbNodes()];
 		unreachableVector[0] = instance.isDuplicateOrigin();
 		nbUnreachableNodes = 1;
@@ -48,7 +48,7 @@ public class Resources implements Comparable<Resources>{
 	 * Create a copy of the given resources
 	 * @param resources
 	 */
-	public Resources(Resources resources) {
+	public ResourcesProduction(ResourcesProduction resources) {
 		cost = resources.getCost();
 		time = resources.getTime();
 		demand = resources.getDemand();
@@ -96,7 +96,7 @@ public class Resources implements Comparable<Resources>{
 	 * @param resources
 	 * @return
 	 */
-	public boolean lessThan(Resources resources) {
+	public boolean lessThan(ResourcesProduction resources) {
 		
 		if( this.cost > resources.getCost() ||
 			this.nbUnreachableNodes > resources.getNbUnreachableNodes() || 
@@ -211,7 +211,7 @@ public class Resources implements Comparable<Resources>{
 	}
 	
 	@Override
-	public int compareTo(Resources that) {
+	public int compareTo(ResourcesProduction that) {
 		
 		double costDiff = this.getCost() - that.getCost();
 		

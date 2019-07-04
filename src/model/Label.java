@@ -132,6 +132,19 @@ public class Label implements Comparable<Label>{
 	 * @param instance
 	 * @return
 	 */
+	public double getDuration() {
+		if (current == null) return 0;
+
+		if (previousLabel == null) return 0;
+		
+		return resources.getTime() - resources.getStartTime();
+		
+//		int curNode = current.getId();
+//		int prevNode = previousLabel.getCurrent().getId();
+//
+//		return previousLabel.getRouteDistance(instance) + instance.getDistance(prevNode, curNode);
+	}
+	
 	public double getRouteDistance(EspprcInstance instance) {
 		if (current == null) return 0;
 
@@ -143,24 +156,25 @@ public class Label implements Comparable<Label>{
 		return previousLabel.getRouteDistance(instance) + instance.getDistance(prevNode, curNode);
 	}
 	
-	public double getStartingTime(EspprcInstance instance) {
-		int curNode = current.getId();
-		int prevNode = previousLabel.getCurrent().getId();
-		if(prevNode == 0) {
-			return this.getResources().getTime() - instance.getDistance(prevNode, curNode);
-		}
-		return previousLabel.getStartingTime(instance);
+	public double getStartingTime() {
+		return resources.getStartTime();
+//		int curNode = current.getId();
+//		int prevNode = previousLabel.getCurrent().getId();
+//		if(prevNode == 0) {
+//			return this.getResources().getTime() - instance.getDistance(prevNode, curNode);
+//		}
+//		return previousLabel.getStartingTime(instance);
 	}
 	
-	public double getVisitTime(int node) {
+	public double getVisitTime(int nodeId) {
 		int curNode = current.getId();
-		if(curNode == node) {
+		if(curNode == nodeId) {
 			return this.getResources().getTime();
 		}
 		if(previousLabel == null) {
 			return 0;
 		}
-		return previousLabel.getVisitTime(node);
+		return previousLabel.getVisitTime(nodeId);
 	}
 	
 	/**
