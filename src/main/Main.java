@@ -9,12 +9,9 @@ import model.ESPPRCResult;
 import model.EspprcInstance;
 import model.Label;
 import model.VRPTWResult;
-import model.Schedule;
 import reader.SolomonReader;
 import solver.EspprcSolver;
-import solver.IopSolver;
 import solver.LabellingSolver;
-import solver.SchedulingSolver;
 import solver.VrptwSolver;
 
 public class Main {
@@ -68,67 +65,11 @@ public class Main {
 		case "MTPRICING":
 			runMultiTrip(directory, nbClients, timeLimit, labelLimit, solomonInstances);
 			break;
-		case "SCHEDULING":
-			runSchedulingSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances);
-			break;
-		case "IOP":
-			runIopSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances, writeColumns);
-			break;
 		default:
 			System.err.println("Could not recognise problem");
 		}
 	}
 	
-	private static void runIopSolver(String directory, String instanceType, int nbClients, int timeLimit,
-			int labelLimit, String[] solomonInstances, boolean writeColumns) throws IOException {
-		
-		File file = new File("results_iop_" + instanceType + "_" + nbClients + ".csv");
-		file.createNewFile();
-
-		writeMasterTitles(file);
-
-		FileWriter writer = new FileWriter(file, true);
-
-		for (String instanceName : solomonInstances) {
-			// Creating the instance
-			EspprcInstance instance = new EspprcInstance();
-			
-			instance.setDuplicateOrigin(true);
-			
-			// Reading the instances
-			SolomonReader reader = new SolomonReader(instance, directory + instanceName);
-			reader.read(nbClients);
-			
-			// Preprocessing nodes
-			instance.buildEdges(false);
-			instance.buildSuccessors();
-			instance.setName(instanceName.substring(0, instanceName.length() - 4));
-			instance.setVehicles(25);
-
-			System.out.println("\n>>> Solving instance " + instanceName);
-
-			// Introduction
-			System.out.println("Solving the instance for " + instance.getNodes().length + " nodes");
-
-			System.out.println("");
-			IopSolver mp = new IopSolver(instance);
-
-			long startTime = System.nanoTime();
-
-			VRPTWResult result = mp.runColumnGeneration(timeLimit, labelLimit, writeColumns, false);
-
-			long endTime = System.nanoTime();
-			long timeElapsed = endTime - startTime;
-
-			System.out.println("--------------------------------------");
-
-			writeMasterResult(writer, instance, result, timeElapsed / 1000000);
-
-		}
-
-		writer.close();
-	}
-
 	/**
 	 * 
 	 * @param directory
@@ -416,73 +357,6 @@ public class Main {
 	}
 
 	/**
-	 * Given the specifications, it solves the pricing problem of the given instance
-	 * generating random negative reduced costs
-	 * 
-	 * @param directory
-	 * @param instanceType
-	 * @param nbClients
-	 * @param timeLimit
-	 * @param labelLimit
-	 * @param useCplex
-	 * @param solomonInstances
-	 * @throws IOException
-	 */
-	private static void runSchedulingSolver(String directory, String instanceType, int nbClients, int timeLimit,
-			int labelLimit, String[] solomonInstances) throws IOException {
-		// Create the file
-		File file = new File("results_scheduling_" + instanceType + "_" + nbClients + ".csv");
-		file.createNewFile();
-
-		// Write the titles to file
-		writePricingTitles(file, false);
-
-		FileWriter writer = new FileWriter(file, true);
-
-		// Stock results in a list
-		model.Schedule[] labellingResults = new Schedule[solomonInstances.length];
-
-		for (int i = 0; i < solomonInstances.length; i++) {
-			// Creating the instance
-			EspprcInstance instance = new EspprcInstance();
-			instance.setDuplicateOrigin(true);
-
-			// Reading the instances
-			SolomonReader reader = new SolomonReader(instance, directory + solomonInstances[i]);
-			reader.read( nbClients );
-
-			// Adapting the instance for the scheduling problem
-			instance.buildScheduling( true );
-			
-			// Preprocessing nodes
-			instance.buildSuccessors();
-			instance.setName(solomonInstances[i].substring(0, solomonInstances[i].length() - 4));
-			
-			instance.printCostMatrix();
-			instance.printSuccessors();
-
-			// Introduction
-			System.out.println("\n>>> Solving instance " + solomonInstances[i] + "\n" + "Solving the instance for "
-					+ instance.getNodes().length + " nodes");
-
-			// Solving
-//			labellingResults[i] = labellingAlgorithm(instance, timeLimit, labelLimit);
-			labellingResults[i] = solveSchedule(instance, timeLimit);
-
-			// Log results
-			System.out.println(labellingResults[i].getPath());
-			System.out.println(labellingResults[i].getCost());
-
-			System.out.println("--------------------------------------");
-
-			// Write results in a file
-//			writePricingResults(writer, instance, null, labellingResults[i]);
-		}
-
-		writer.close();
-	}
-
-	/**
 	 * Returns an array of string containg all the instances of the given type
 	 * 
 	 * @param instanceType
@@ -711,18 +585,4 @@ public class Main {
 		return result;
 	}
 	
-	/**
-	 * Run inear program to solve the scheduling pricing problem
-	 * @param instance
-	 * @param timeLimit
-	 * @return
-	 */
-	private static Schedule solveSchedule(EspprcInstance instance, int timeLimit) {
-
-		// Solving the instance
-		SchedulingSolver solver = new SchedulingSolver(instance);
-		Schedule result = solver.solveSchedule(timeLimit);
-
-		return result;
-	}
 }

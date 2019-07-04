@@ -14,11 +14,6 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
     private int demand;
     
     /**
-     * Stability time for the required product of the client
-     */
-    private double stabilityTime;
-    
-    /**
      * Time needed to produce the required product of the client
      */
     private double productionTime;
@@ -42,18 +37,6 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
 	 * Flag to check if it is the last node
 	 */
 	private boolean isDepot = false;
-	
-	/**
-	 * A dual weight correspondig to "delta" dual variables
-	 * for pricing resolution reasons
-	 */
-	private double stabilityDual;
-	
-	/**
-	 * A sual weight corresponding to "epsilon" dual variables
-	 * for pricing resolution reasons
-	 */
-	private double precedenceDual;
 	
 	/**
 	 * 
@@ -103,14 +86,6 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
 	public void setServiceTime(double serviceTime) {
 		this.serviceTime = serviceTime;
 	}
-	
-    public double getStabilityTime() {
-		return stabilityTime;
-	}
-
-	public void setStabilityTime(double stabilityTime) {
-		this.stabilityTime = stabilityTime;
-	}
 
 	public double getProductionTime() {
 		return productionTime;
@@ -150,21 +125,5 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
 		
 		double comparison = this.start - that.getStart();
 		return (int) Math.signum(comparison);
-	}
-
-	public double getStabilityDual() {
-		return stabilityDual;
-	}
-
-	public void setStabilityDual(double stabilityDual) {
-		this.stabilityDual = stabilityDual;
-	}
-
-	public double getPrecedenceDual() {
-		return precedenceDual;
-	}
-
-	public void setPrecedenceDual(double precedenceDual) {
-		this.precedenceDual = precedenceDual;
 	}
 }

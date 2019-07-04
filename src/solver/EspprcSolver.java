@@ -55,8 +55,7 @@ public class EspprcSolver {
 			
 			// Objective
 			this.addESPPRCObjective(cplex, x);
-//			this.addIopObjective(cplex, x, s);
-
+			
 			// Constraints
 			this.addOneTourConstraints(cplex, x);
 
@@ -323,23 +322,4 @@ public class EspprcSolver {
 
 		cplex.addMinimize(obj);
 	}
-	
-	private void addIopObjective(IloCplex cplex, IloNumVar[][] x, IloNumVar[] s) throws IloException {
-		IloLinearNumExpr obj = cplex.linearNumExpr();
-
-		for(int i=0; i < x.length; i++) {
-			Customer current = instance.getNode(i);
-			obj.addTerm(s[i], -current.getStabilityDual());
-			obj.addTerm(s[0], -current.getPrecedenceDual());
-			for(int j=0; j < x[i].length; j++) {
-				if(i != j) {
-					obj.addTerm(x[i][j], this.instance.getCostMatrix()[i][j]);
-				}
-			}
-		}
-
-
-		cplex.addMinimize(obj);
-	}
-	
 }

@@ -142,20 +142,7 @@ public class Resources implements Comparable<Resources>{
 		}
 		
 		// We add the cost
-		if(instance.getType().equals("Scheduling")) {
-			
-			// c`_l = c_l - beta_i + (w_{il} + st_i)*delta_i - w_{il}*epsilon_i
-			double finishTime = this.time + currentNode.getServiceTime();
-			double stabilityFactor = finishTime + currentNode.getStabilityTime();
-			this.addCost( arcCost + stabilityFactor*currentNode.getStabilityDual() - finishTime*currentNode.getPrecedenceDual());
-		}
-		else if(instance.getType().equals("Routing")) {
-			// c`_k = c_k - alpha_i - u_{ik}*delta_i - omega_i*epsilon_i
-			this.addCost( arcCost - this.time*currentNode.getStabilityDual() - this.startTime*currentNode.getPrecedenceDual());
-		}
-		else {
-			this.addCost( arcCost );
-		}
+		this.addCost( arcCost );
 		
 		// If origin then reset demand consumption
 		if( previousNode.getId() == 0 ) {

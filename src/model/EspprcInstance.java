@@ -51,11 +51,6 @@ public class EspprcInstance {
 	 * To identify the instance
 	 */
 	private String name;
-	
-	/**
-	 * Identifying type of instance (routing, scheduling)
-	 */
-	private String type = "";
 
 	/**
 	 * Default constructor
@@ -196,57 +191,6 @@ public class EspprcInstance {
 		}
 	}
 	
-	public void buildScheduling(boolean simulate) {
-		// For simulation purposes
-		int max = 20;
-		int min = 0;
-		Random rand = new Random(0);
-		Random randEpsilon = new Random(nodes.length);
-		Random randDelta = new Random(nodes.length*2);
-
-		// We introduce a time factor to model to go through the distance
-		double timeFactor = 1;
-
-		int nbNodes = this.getNodes().length;
-		this.cost = new double[nbNodes][nbNodes];
-		this.distance = new double[nbNodes][nbNodes];
-		for(int i=0; i < nbNodes-1; i++) {
-			Customer currentNode = this.getNode(i);
-			int delta = randDelta.nextInt(max - min + 1) + min;
-			int epsilon = randEpsilon.nextInt(max - min + 1) + min;
-			
-			if(simulate) {
-				currentNode.setStabilityDual(-delta);
-				currentNode.setPrecedenceDual(epsilon);
-			}
-			for(int j=0; j < nbNodes; j++) {
-				if( i != j ) {
-					int randomInt = rand.nextInt(max - min + 1) + min;
-					if( !simulate || i == 0) { randomInt = 0; }
-
-					this.cost[i][j] = -randomInt;
-				}
-			}
-			
-			// Test values 
-			currentNode.setStabilityTime(currentNode.getDemand()*10);
-			currentNode.setProductionTime( currentNode.getServiceTime() * 2 );
-			
-			double productionStart = currentNode.getStart() - currentNode.getProductionTime() - currentNode.getStabilityTime();
-			double productionEnd = currentNode.getEnd() - this.getNode(0).distance(currentNode)*timeFactor;
-			
-			currentNode.setStart( productionStart > 0 ? productionStart : 0 );
-			currentNode.setEnd( productionEnd > 0 ? productionEnd : 0 );
-			currentNode.setServiceTime( currentNode.getProductionTime() );
-			currentNode.setDemand( 0 );
-		}
-		
-		if( this.duplicateOrigin ) {
-			// The origin & the depot are the same
-			this.cost[0][nbNodes-1] = 0;
-		}
-	}
-	
 	/**
 	 * Given the dual values, it updates the cost of an edge
 	 * for the VRPTW sub-problem
@@ -255,17 +199,6 @@ public class EspprcInstance {
 	public void updateDualValues(double[] pi, double pc) {
 		int duplicated = duplicateOrigin ? 1 : 0;
         for (int i = 1; i < this.getNbNodes() - duplicated; i++) {
-            for (int j = 0; j < this.getNbNodes(); j++) {
-          	  this.cost[i][j] = this.distance[i][j] - pi[i-1] - pc;
-            }
-        }
-	}
-	
-	public void updateIOPDualValues(double[] pi, double[] delta, double[] epsilon, double pc) {
-		int duplicated = duplicateOrigin ? 1 : 0;
-        for (int i = 1; i < this.getNbNodes() - duplicated; i++) {
-        	nodes[i].setStabilityDual(delta[i-1]);
-        	nodes[i].setPrecedenceDual(epsilon[i-1]);
             for (int j = 0; j < this.getNbNodes(); j++) {
           	  this.cost[i][j] = this.distance[i][j] - pi[i-1] - pc;
             }
@@ -402,14 +335,6 @@ public class EspprcInstance {
 
 	public String getName() {
 		return name;
-	}
-
-	public String getType() {
-		return type;
-	}
-
-	public void setType(String type) {
-		this.type = type;
 	}
 
 	public void setName(String name) {
