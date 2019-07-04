@@ -51,6 +51,11 @@ public class EspprcInstance {
 	 * To identify the instance
 	 */
 	private String name;
+	
+	/**
+	 * Identifying type of instance (routing, scheduling)
+	 */
+	private String type = "";
 
 	/**
 	 * Default constructor
@@ -196,6 +201,8 @@ public class EspprcInstance {
 		int max = 20;
 		int min = 0;
 		Random rand = new Random(0);
+		Random randEpsilon = new Random(nodes.length);
+		Random randDelta = new Random(nodes.length*2);
 
 		// We introduce a time factor to model to go through the distance
 		double timeFactor = 1;
@@ -203,16 +210,21 @@ public class EspprcInstance {
 		int nbNodes = this.getNodes().length;
 		this.cost = new double[nbNodes][nbNodes];
 		this.distance = new double[nbNodes][nbNodes];
-		for(int i=0; i < nbNodes; i++) {
+		for(int i=0; i < nbNodes-1; i++) {
 			Customer currentNode = this.getNode(i);
+			int delta = randDelta.nextInt(max - min + 1) + min;
+			int epsilon = randEpsilon.nextInt(max - min + 1) + min;
 			
+			if(simulate) {
+				currentNode.setStabilityDual(-delta);
+				currentNode.setPrecedenceDual(epsilon);
+			}
 			for(int j=0; j < nbNodes; j++) {
 				if( i != j ) {
 					int randomInt = rand.nextInt(max - min + 1) + min;
 					if( !simulate || i == 0) { randomInt = 0; }
 
 					this.cost[i][j] = -randomInt;
-//					this.distance[i][j] = 0;
 				}
 			}
 			
@@ -244,12 +256,20 @@ public class EspprcInstance {
 		int duplicated = duplicateOrigin ? 1 : 0;
         for (int i = 1; i < this.getNbNodes() - duplicated; i++) {
             for (int j = 0; j < this.getNbNodes(); j++) {
-          	  this.cost[i][j] = this.distance[i][j] - pi[i-1];
+          	  this.cost[i][j] = this.distance[i][j] - pi[i-1] - pc;
             }
         }
-//        for (int j = 0; j < this.getNbNodes(); j++) {
-//        	this.cost[0][j] = this.distance[0][j] + pc;
-//        }
+	}
+	
+	public void updateIOPDualValues(double[] pi, double[] delta, double[] epsilon, double pc) {
+		int duplicated = duplicateOrigin ? 1 : 0;
+        for (int i = 1; i < this.getNbNodes() - duplicated; i++) {
+        	nodes[i].setStabilityDual(delta[i-1]);
+        	nodes[i].setPrecedenceDual(epsilon[i-1]);
+            for (int j = 0; j < this.getNbNodes(); j++) {
+          	  this.cost[i][j] = this.distance[i][j] - pi[i-1] - pc;
+            }
+        }
 	}
 	
 	/**
@@ -382,6 +402,14 @@ public class EspprcInstance {
 
 	public String getName() {
 		return name;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
 	}
 
 	public void setName(String name) {

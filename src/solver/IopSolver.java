@@ -22,6 +22,7 @@ import model.Customer;
 import model.EspprcInstance;
 import model.Label;
 import model.VRPTWResult;
+import model.Schedule;
 
 
 public class IopSolver {
@@ -74,8 +75,12 @@ public class IopSolver {
      */
     public IopSolver(EspprcInstance instance) {
         this.instance = instance;
+        this.instance.setType("Routing");
+        
         this.productionInstance = new EspprcInstance( instance );
         this.productionInstance.buildScheduling(false);
+        this.productionInstance.setType("Scheduling");
+
         this.routeColumns = new ArrayList<Label>();
         this.scheduleColumns = new ArrayList<Label>();
     }
@@ -96,7 +101,7 @@ public class IopSolver {
             // Vehicle float
             int U = instance.getVehicles();
             // Pharmacists
-            int W = 10;
+            int W = 20;
             // Large numbers
             double M_omega = 1000;
             double M_psi = 1000;
@@ -149,8 +154,8 @@ public class IopSolver {
             precedenceConstraints = getFeasabilityConstraints(true);
             
             // >>> Add initial columns
-            ArrayList<Label> initialRoutes = getInitialCols(instance);
-            ArrayList<Label> initialSchedules = getInitialCols(productionInstance);
+            ArrayList<Label> initialRoutes = getDefaultCols(instance);
+            ArrayList<Label> initialSchedules = getDefaultCols(productionInstance);
 
             addRouteColumns(initialRoutes, x, objective);
             addScheduleColumns(initialSchedules, y, objective);
@@ -165,7 +170,7 @@ public class IopSolver {
             int maxLabels = labelLimit;
             int SPTimeLimit = timeLimit;
             Label minCostRoute = initialRoutes.get(0);
-            Label minCostSchedule = initialSchedules.get(0);
+            Schedule minCostSchedule = new Schedule(instance.getNbNodes());
 
             // > Start column generation loop
             int iteration = 0;
@@ -175,18 +180,22 @@ public class IopSolver {
                 // ======================== Solve Relaxed Master Problem ==============================
                 cplex.solve();
                 System.out.println("Objective: " + cplex.getObjValue());
-                
+                System.out.println("Vehicles dual: " + cplex.getDual(vehiclesConstraint));
+                System.out.println("Machines dual: " + cplex.getDual(machinesConstraint));
+
                 // Get dual values
-                instance.updateDualValues(cplex.getDuals(nodeRoutesConstraints), cplex.getDual(vehiclesConstraint));
-                productionInstance.updateDualValues(cplex.getDuals(nodeMachinesConstraints), cplex.getDual(machinesConstraint));
+                double[] delta = cplex.getDuals( stabilityConstraints );
+                double[] epsilon = cplex.getDuals( precedenceConstraints );
+                instance.updateIOPDualValues( cplex.getDuals(nodeRoutesConstraints), delta, epsilon, cplex.getDual(vehiclesConstraint) );
+                productionInstance.updateIOPDualValues( cplex.getDuals(nodeMachinesConstraints), delta, epsilon, cplex.getDual(machinesConstraint) );
 
                 // Write down dual values
-                writeDualValues(writer, nodeRoutesConstraints);
+                writeDualValues( writer, nodeRoutesConstraints );
 
                 // ======================== Solve Subproblem ==============================
 
                 // Update maximum label quantity for the pricing problem
-                if (iteration > 1 && minCostRoute.getCost() > costGap) {
+                if (iteration > 1 && minCostRoute.getCost() > costGap && minCostSchedule.getCost() > costGap) {
                     if (maxLabels > 0) {
                         maxLabels = 0;
                     } else {
@@ -201,18 +210,25 @@ public class IopSolver {
                 minCostRoute = newRoutes.get(0);
 
                 // Scheduling pricing problem
-                ArrayList<Label> newSchedules = getNewScheduleColumns(SPTimeLimit, maxLabels);
-                minCostSchedule = newSchedules.get(0);
+//                ArrayList<Label> newSchedules = getNewScheduleColumns(SPTimeLimit, maxLabels);
+//                minCostSchedule = newSchedules.get(0);
+                
+                Schedule newS = getNewSchedule(SPTimeLimit, maxLabels);
+                minCostSchedule = newS;
                 
                 // Add columns
                 addRouteColumns(newRoutes, x, objective);
+                addScheduleColumn(newS, y, objective);
 //                addMoreRouteColumns(minCostRoute, SPTimeLimit, maxLabels, x, objective);
 
                 System.out.println("Iteration nº " + iteration);
                 System.out.println("Generated route " + minCostRoute.getRoute());
                 System.out.println("With reduced cost " + minCostRoute.getCost());
+                System.out.println("Generated schedule " + minCostSchedule.getPath());
+                System.out.println("With reduced cost " + minCostSchedule.getCost());
+                System.out.println("");
 
-            } while (!finished && System.currentTimeMillis() < endTime);
+            } while (!finished && System.currentTimeMillis() < endTime && iteration < 15);
 
             if (writeDuals) {
                 writer.close();
@@ -271,6 +287,7 @@ public class IopSolver {
      * @param objective
      * @throws IloException
      */
+	@SuppressWarnings("unused")
 	private void addMoreRouteColumns(Label minCostRoute, int SPTimeLimit, int maxLabels,
 			ArrayList<IloNumVar> x, IloObjective objective) throws IloException {
         instance.deleteRouteNodes(minCostRoute);
@@ -498,11 +515,11 @@ public class IopSolver {
                 col = col.and(cplex.column(nodeRoutesConstraints[node], visit));
                 
                 // Stability
-                double timeVisit = route.getVisitTime(node);
+                double timeVisit = route.getVisitTime(node + 1);
                 col = col.and(cplex.column(stabilityConstraints[node], timeVisit));
                                 
                 // Precedence
-                double startingTime = route.getStartingTime(instance);
+                double startingTime = route.getStartingTime();
                 col = col.and(cplex.column(precedenceConstraints[node], startingTime));
 
             }
@@ -520,21 +537,28 @@ public class IopSolver {
     		throws IloException {
     	int depotNodes = productionInstance.isDuplicateOrigin() ? 2 : 1;
     	for (Label schedule : schedules) {
-    		IloColumn col = cplex.column(objective, schedule.getRouteDistance(productionInstance));
+    		IloColumn col = cplex.column(objective, schedule.getDuration());
 
     		// Visit and feasability constraints
     		for (int node = 0; node < productionInstance.getNbNodes() - depotNodes; node++) {
     			// Visits
     			int visit = schedule.isVisited(node + 1) ? 1 : 0;
-    			col = col.and(cplex.column(nodeMachinesConstraints[node], visit));
-
+    			col = col.and( cplex.column(nodeMachinesConstraints[node], visit) );
+    			
+    			// Parameters
+    			double jobFinishTime = 0;
+    			double lifeTime = 0;
+    			if( schedule.isVisited(node + 1) ) {
+    				Customer currentNode = productionInstance.getNode(node + 1);
+    				jobFinishTime = schedule.getVisitTime(node + 1) + currentNode.getProductionTime();
+    				lifeTime = jobFinishTime + currentNode.getStabilityTime();
+    			}
+    			
     			// Stability
-    			double timeVisit = schedule.getVisitTime(node) + productionInstance.getNode(node).getStabilityTime();
-    			col = col.and(cplex.column(stabilityConstraints[node], timeVisit));
+    			col = col.and( cplex.column(stabilityConstraints[node], -lifeTime) );
 
     			// Precedence
-    			double startingTime = schedule.getStartingTime(instance);
-    			col = col.and(cplex.column(precedenceConstraints[node], startingTime));
+    			col = col.and( cplex.column(precedenceConstraints[node], -jobFinishTime) );
 
     		}
 
@@ -545,6 +569,43 @@ public class IopSolver {
     		// To keep trace
     		scheduleColumns.add(schedule);
     	}
+    }
+    
+    private void addScheduleColumn(Schedule schedule, ArrayList<IloNumVar> y, IloObjective objective) 
+    		throws IloException {
+    	int depotNodes = productionInstance.isDuplicateOrigin() ? 2 : 1;
+		IloColumn col = cplex.column(objective, schedule.getDuration());
+
+		// Visit and feasability constraints
+		for (int node = 0; node < productionInstance.getNbNodes() - depotNodes; node++) {
+			// Visits
+			int visit = schedule.isVisited(node + 1) ? 1 : 0;
+			col = col.and( cplex.column(nodeMachinesConstraints[node], visit) );
+			
+			// Parameters
+			double jobFinishTime = 0;
+			double lifeTime = 0;
+			if( schedule.isVisited(node + 1) ) {
+				Customer currentNode = productionInstance.getNode(node + 1);
+				jobFinishTime = schedule.getServiceTime(node + 1) + currentNode.getProductionTime();
+				lifeTime = jobFinishTime + currentNode.getStabilityTime();
+			}
+			
+			// Stability
+			col = col.and( cplex.column(stabilityConstraints[node], -lifeTime) );
+
+			// Precedence
+			col = col.and( cplex.column(precedenceConstraints[node], -jobFinishTime) );
+
+		}
+
+		// Vehicle capacity constraint
+		col = col.and(cplex.column(machinesConstraint, 1));
+		y.add(cplex.numVar(col, 0, 1, "y_" + y.size()));
+
+		// To keep trace
+//		scheduleColumns.add(schedule);
+    	
     }
 
     /**
@@ -618,12 +679,22 @@ public class IopSolver {
         return negCostRoutes;
     }
 
+	public Schedule getNewSchedule(int timeLimit, int labelLimit) {
+
+		// Solving the instance
+		SchedulingSolver solver = new SchedulingSolver(productionInstance);
+		Schedule result = solver.solveSchedule(timeLimit);
+
+		return result;
+	}
+
     /**
      * Generate columns folowing the start time order until there is no more capacity
      *
      * @return
      */
-    private ArrayList<Label> getInitialCols(EspprcInstance subproblem) {
+    @SuppressWarnings("unused")
+	private ArrayList<Label> getInitialCols(EspprcInstance subproblem) {
 
         ArrayList<Customer> nodes = new ArrayList<Customer>(Arrays.asList(subproblem.getNodes()));
         nodes.remove(0);
@@ -691,19 +762,19 @@ public class IopSolver {
      */
     @SuppressWarnings("unused")
     @Deprecated
-    private ArrayList<Label> getDefaultCols() {
+    private ArrayList<Label> getDefaultCols(EspprcInstance subproblem) {
         ArrayList<Label> result = new ArrayList<Label>();
 
-        ArrayList<Customer> nodes = new ArrayList<Customer>(Arrays.asList(instance.getNodes()));
+        ArrayList<Customer> nodes = new ArrayList<Customer>(Arrays.asList(subproblem.getNodes()));
 
         nodes.remove(0);
         nodes.remove(nodes.size() - 1);
-        Customer depot = instance.getNode(instance.getNbNodes() - 1);
+        Customer depot = subproblem.getNode(subproblem.getNbNodes() - 1);
 
         for (Customer node : nodes) {
-            Label label = new Label(instance);
-            label = label.extendLabel(node, instance);
-            label = label.extendLabel(depot, instance);
+            Label label = new Label(subproblem);
+            label = label.extendLabel(node, subproblem);
+            label = label.extendLabel(depot, subproblem);
 
             result.add(label);
         }

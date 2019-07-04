@@ -9,9 +9,12 @@ import model.ESPPRCResult;
 import model.EspprcInstance;
 import model.Label;
 import model.VRPTWResult;
+import model.Schedule;
 import reader.SolomonReader;
 import solver.EspprcSolver;
+import solver.IopSolver;
 import solver.LabellingSolver;
+import solver.SchedulingSolver;
 import solver.VrptwSolver;
 
 public class Main {
@@ -19,13 +22,13 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 
 		// Default options
-		int nbClients = 100;
+		int nbClients = 10;
 		int useCplex = 0;
 		int timeLimit = 600;
 		int labelLimit = 0;
-		String instanceType = "R101";
+		String instanceType = "C101";
 		String directory = "./instances/solomon/";
-		String problem = "Master";
+		String problem = "iop";
 		boolean writeColumns = false;
 
 		// Reading arguments
@@ -68,9 +71,62 @@ public class Main {
 		case "SCHEDULING":
 			runSchedulingSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances);
 			break;
+		case "IOP":
+			runIopSolver(directory, instanceType, nbClients, timeLimit, labelLimit, solomonInstances, writeColumns);
+			break;
 		default:
 			System.err.println("Could not recognise problem");
 		}
+	}
+	
+	private static void runIopSolver(String directory, String instanceType, int nbClients, int timeLimit,
+			int labelLimit, String[] solomonInstances, boolean writeColumns) throws IOException {
+		
+		File file = new File("results_iop_" + instanceType + "_" + nbClients + ".csv");
+		file.createNewFile();
+
+		writeMasterTitles(file);
+
+		FileWriter writer = new FileWriter(file, true);
+
+		for (String instanceName : solomonInstances) {
+			// Creating the instance
+			EspprcInstance instance = new EspprcInstance();
+			
+			instance.setDuplicateOrigin(true);
+			
+			// Reading the instances
+			SolomonReader reader = new SolomonReader(instance, directory + instanceName);
+			reader.read(nbClients);
+			
+			// Preprocessing nodes
+			instance.buildEdges(false);
+			instance.buildSuccessors();
+			instance.setName(instanceName.substring(0, instanceName.length() - 4));
+			instance.setVehicles(25);
+
+			System.out.println("\n>>> Solving instance " + instanceName);
+
+			// Introduction
+			System.out.println("Solving the instance for " + instance.getNodes().length + " nodes");
+
+			System.out.println("");
+			IopSolver mp = new IopSolver(instance);
+
+			long startTime = System.nanoTime();
+
+			VRPTWResult result = mp.runColumnGeneration(timeLimit, labelLimit, writeColumns, false);
+
+			long endTime = System.nanoTime();
+			long timeElapsed = endTime - startTime;
+
+			System.out.println("--------------------------------------");
+
+			writeMasterResult(writer, instance, result, timeElapsed / 1000000);
+
+		}
+
+		writer.close();
 	}
 
 	/**
@@ -145,13 +201,10 @@ public class Main {
 	 * @throws IOException
 	 *             File names could not be found
 	 */
-	@SuppressWarnings("unused")
 	private static void runMasterSolver(String directory, String instanceType, int nbClients, int timeLimit,
 			int labelLimit, String[] solomonInstances, boolean writeColumns) throws IOException {
 
 		// Stock results in a list
-		VRPTWResult[] labellingResults = new VRPTWResult[solomonInstances.length];
-
 		File file = new File("results_vrptw_" + instanceType + "_" + nbClients + ".csv");
 		file.createNewFile();
 
@@ -164,7 +217,7 @@ public class Main {
 			EspprcInstance instance = new EspprcInstance();
 			
 			instance.setDuplicateOrigin(true);
-
+			
 			// Reading the instances
 			SolomonReader reader = new SolomonReader(instance, directory + instanceName);
 			reader.read(nbClients);
@@ -173,7 +226,6 @@ public class Main {
 			instance.buildEdges(false);
 			instance.buildSuccessors();
 			instance.setName(instanceName.substring(0, instanceName.length() - 4));
-			// instance.setVehicles(14);
 
 			System.out.println("\n>>> Solving instance " + instanceName);
 
@@ -388,7 +440,7 @@ public class Main {
 		FileWriter writer = new FileWriter(file, true);
 
 		// Stock results in a list
-		ESPPRCResult[] labellingResults = new ESPPRCResult[solomonInstances.length];
+		model.Schedule[] labellingResults = new Schedule[solomonInstances.length];
 
 		for (int i = 0; i < solomonInstances.length; i++) {
 			// Creating the instance
@@ -397,30 +449,34 @@ public class Main {
 
 			// Reading the instances
 			SolomonReader reader = new SolomonReader(instance, directory + solomonInstances[i]);
-			reader.read(nbClients);
+			reader.read( nbClients );
 
 			// Adapting the instance for the scheduling problem
-			instance.buildScheduling(true);
+			instance.buildScheduling( true );
 			
 			// Preprocessing nodes
 			instance.buildSuccessors();
 			instance.setName(solomonInstances[i].substring(0, solomonInstances[i].length() - 4));
+			
+			instance.printCostMatrix();
+			instance.printSuccessors();
 
 			// Introduction
 			System.out.println("\n>>> Solving instance " + solomonInstances[i] + "\n" + "Solving the instance for "
 					+ instance.getNodes().length + " nodes");
 
 			// Solving
-			labellingResults[i] = labellingAlgorithm(instance, timeLimit, labelLimit);
+//			labellingResults[i] = labellingAlgorithm(instance, timeLimit, labelLimit);
+			labellingResults[i] = solveSchedule(instance, timeLimit);
 
 			// Log results
-			System.out.println(labellingResults[i].getRoute());
+			System.out.println(labellingResults[i].getPath());
 			System.out.println(labellingResults[i].getCost());
 
 			System.out.println("--------------------------------------");
 
 			// Write results in a file
-			writePricingResults(writer, instance, null, labellingResults[i]);
+//			writePricingResults(writer, instance, null, labellingResults[i]);
 		}
 
 		writer.close();
@@ -436,30 +492,30 @@ public class Main {
 	private static String[] getSelectedInstances(String instanceType) {
 
 		if (instanceType.equals("R")) {
-			return getRInstances();
+			return SolomonReader.getRInstances();
 		}
 
 		if (instanceType.equals("C")) {
-			return getCInstances();
+			return SolomonReader.getCInstances();
 		}
 
 		if (instanceType.equals("RC")) {
-			return getRCInstances();
+			return SolomonReader.getRCInstances();
 		}
 
 		if (instanceType.equals("All")) {
-			return getAllInstances();
+			return SolomonReader.getAllInstances();
 		}
 
 		if (instanceType.equals("Test")) {
-			return getTestInstances();
+			return SolomonReader.getTestInstances();
 		}
 
 		if (instanceType.equals("Test2")) {
-			return getTestInstances2();
+			return SolomonReader.getTestInstances2();
 		}
 
-		return getInstace(instanceType);
+		return SolomonReader.getInstace(instanceType);
 	}
 
 	/**
@@ -594,7 +650,7 @@ public class Main {
 	 * @param labelLimit
 	 * @return
 	 */
-	public static ESPPRCResult labellingAlgorithm(EspprcInstance instance, int timeLimit, int labelLimit) {
+	private static ESPPRCResult labellingAlgorithm(EspprcInstance instance, int timeLimit, int labelLimit) {
 		// We start the label correcting algorithm
 		System.out.println("START: Generating feasible routes");
 
@@ -646,7 +702,7 @@ public class Main {
 	 * @param timeLimit
 	 * @return
 	 */
-	public static ESPPRCResult solveESPPRC(EspprcInstance instance, int timeLimit) {
+	private static ESPPRCResult solveESPPRC(EspprcInstance instance, int timeLimit) {
 
 		// Solving the instance
 		EspprcSolver solver = new EspprcSolver(instance);
@@ -654,118 +710,19 @@ public class Main {
 
 		return result;
 	}
+	
+	/**
+	 * Run inear program to solve the scheduling pricing problem
+	 * @param instance
+	 * @param timeLimit
+	 * @return
+	 */
+	private static Schedule solveSchedule(EspprcInstance instance, int timeLimit) {
 
-	private static String[] getCInstances() {
-		String[] instances = new String[9];
+		// Solving the instance
+		SchedulingSolver solver = new SchedulingSolver(instance);
+		Schedule result = solver.solveSchedule(timeLimit);
 
-		instances[0] = "C101.txt";
-		instances[1] = "C102.txt";
-		instances[2] = "C103.txt";
-		instances[3] = "C104.txt";
-		instances[4] = "C105.txt";
-		instances[5] = "C106.txt";
-		instances[6] = "C107.txt";
-		instances[7] = "C108.txt";
-		instances[8] = "C109.txt";
-
-		return instances;
-	}
-
-	private static String[] getRInstances() {
-		String[] instances = new String[12];
-
-		instances[0] = "R101.txt";
-		instances[1] = "R102.txt";
-		instances[2] = "R103.txt";
-		instances[3] = "R104.txt";
-		instances[4] = "R105.txt";
-		instances[5] = "R106.txt";
-		instances[6] = "R107.txt";
-		instances[7] = "R108.txt";
-		instances[8] = "R109.txt";
-		instances[9] = "R110.txt";
-		instances[10] = "R111.txt";
-		instances[11] = "R112.txt";
-
-		return instances;
-	}
-
-	private static String[] getRCInstances() {
-		String[] instances = new String[8];
-
-		instances[0] = "RC101.txt";
-		instances[1] = "RC102.txt";
-		instances[2] = "RC103.txt";
-		instances[3] = "RC104.txt";
-		instances[4] = "RC105.txt";
-		instances[5] = "RC106.txt";
-		instances[6] = "RC107.txt";
-		instances[7] = "RC108.txt";
-
-		return instances;
-	}
-
-	private static String[] getAllInstances() {
-		String[] instances = new String[29];
-
-		System.arraycopy(getRInstances(), 0, instances, 0, 12);
-		System.arraycopy(getCInstances(), 0, instances, 12, 9);
-		System.arraycopy(getRCInstances(), 0, instances, 21, 8);
-
-		return instances;
-	}
-
-	private static String[] getTestInstances() {
-		String[] instances = new String[80];
-		for (int i = 0; i < 10; i++) {
-			instances[i] = "RC103.txt";
-		}
-		for (int i = 10; i < 20; i++) {
-			instances[i] = "RC108.txt";
-		}
-		for (int i = 20; i < 30; i++) {
-			instances[i] = "C102.txt";
-		}
-		for (int i = 30; i < 40; i++) {
-			instances[i] = "R102.txt";
-		}
-		for (int i = 40; i < 50; i++) {
-			instances[i] = "R106.txt";
-		}
-		for (int i = 50; i < 60; i++) {
-			instances[i] = "R101.txt";
-		}
-		for (int i = 60; i < 70; i++) {
-			instances[i] = "C101.txt";
-		}
-		for (int i = 70; i < 80; i++) {
-			instances[i] = "RC101.txt";
-		}
-		return instances;
-	}
-
-	private static String[] getTestInstances2() {
-		String[] instances = new String[14];
-		instances[0] = "R102.txt";
-		instances[1] = "R104.txt";
-		instances[2] = "R107.txt";
-		instances[3] = "R108.txt";
-		instances[4] = "R112.txt";
-		instances[5] = "C101.txt";
-		instances[6] = "C103.txt";
-		instances[7] = "C104.txt";
-		instances[8] = "C105.txt";
-		instances[9] = "C109.txt";
-		instances[10] = "RC101.txt";
-		instances[11] = "RC103.txt";
-		instances[12] = "RC104.txt";
-		instances[13] = "RC108.txt";
-		return instances;
-	}
-
-	private static String[] getInstace(String instanceType) {
-		String[] instances = new String[1];
-		instances[0] = instanceType + ".txt";
-		return instances;
+		return result;
 	}
 }

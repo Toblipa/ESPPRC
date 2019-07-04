@@ -1,14 +1,34 @@
 package model;
 
-public class Resources implements Comparable<Resources>{
+public class ResourcesRoute implements Comparable<ResourcesRoute>{
 	
+	/**
+	 * Total cost of the route
+	 */
 	private double cost;
+	
+	/**
+	 * Fixed reduced cost of the route
+	 */
+	private double fixedCost;
 
+	/**
+	 * Time consumtion resource
+	 */
 	private double time;
 	
-	private double demand;
-	
+	/**
+	 * Time when the route starts = s_0
+	 */
 	private double startTime;
+	
+	/**
+	 * Negative sum of the dual variables of visited nodes  
+	 * \sum_{i \in Route}{- \delta_i - \epsilon_i}
+	 */
+	private double dualDiff;
+	
+	private int breakingNode;
 	
 	/**
 	 * Number of visited nodes
@@ -34,7 +54,7 @@ public class Resources implements Comparable<Resources>{
 	 * Initialize the origin resources
 	 * @param instance
 	 */
-	public Resources(EspprcInstance instance) {
+	public ResourcesRoute(EspprcInstance instance) {
 		unreachableVector = new boolean[instance.getNbNodes()];
 		unreachableVector[0] = instance.isDuplicateOrigin();
 		nbUnreachableNodes = 1;
@@ -48,11 +68,11 @@ public class Resources implements Comparable<Resources>{
 	 * Create a copy of the given resources
 	 * @param resources
 	 */
-	public Resources(Resources resources) {
-		cost = resources.getCost();
+	public ResourcesRoute(ResourcesRoute resources) {
+		fixedCost = resources.getCost();
 		time = resources.getTime();
-		demand = resources.getDemand();
 		startTime = resources.getStartTime();
+		dualDiff = resources.getDualDiff();
 		nbVisitedNodes = resources.getNbVisitedNodes();
 		nbUnreachableNodes = resources.getNbUnreachableNodes();
 		visitationVector = resources.getVisitationVector().clone();
@@ -64,15 +84,7 @@ public class Resources implements Comparable<Resources>{
 	 * @param amount
 	 */
 	public void addCost(double amount){
-		cost += amount;
-	}
-	
-	/**
-	 * Add the given amount to the demand resource
-	 * @param amount
-	 */
-	public void addDemand(double amount) {
-		demand += amount;
+		fixedCost += amount;
 	}
 	
 	/**
@@ -96,9 +108,9 @@ public class Resources implements Comparable<Resources>{
 	 * @param resources
 	 * @return
 	 */
-	public boolean lessThan(Resources resources) {
+	public boolean lessThan(ResourcesRoute resources) {
 		
-		if( this.cost > resources.getCost() ||
+		if( this.fixedCost > resources.getCost() ||
 			this.nbUnreachableNodes > resources.getNbUnreachableNodes() || 
 			this.time > resources.getTime() )/*|| 
 			this.demand > resources.getDemand() )*/
@@ -127,6 +139,8 @@ public class Resources implements Comparable<Resources>{
 	public void extendResources(EspprcInstance instance, Customer previousNode, Customer currentNode) {
 		double arcCost = instance.getCost(previousNode.getId(), currentNode.getId());
 		double arcDistance = instance.getDistance( previousNode.getId(), currentNode.getId() );
+		
+		extendTime(arcDistance, previousNode, currentNode);
 		
 		// We add the time of the label, considering we cannot visit the customer before the start time
 		if( currentNode.getStart() > this.time + previousNode.getServiceTime() + arcDistance ) {
@@ -157,14 +171,6 @@ public class Resources implements Comparable<Resources>{
 			this.addCost( arcCost );
 		}
 		
-		// If origin then reset demand consumption
-		if( previousNode.getId() == 0 ) {
-			this.demand = 0;
-		}
-		
-		// Add demand resource
-		this.addDemand( currentNode.getDemand() );
-		
 		// Update visited nodes
 		if(currentNode.getId() != 0) {
 			this.updateVisitationVector(currentNode);
@@ -174,6 +180,22 @@ public class Resources implements Comparable<Resources>{
 		this.updateUnreachableNodes(instance, currentNode);		
 	}
 	
+	private void extendTime(double arcDistance, Customer previousNode, Customer currentNode) {
+		
+		// We add the time of the label, considering we cannot visit the customer before the start time
+		if( currentNode.getStart() > this.time + previousNode.getServiceTime() + arcDistance ) {
+			this.setTime( currentNode.getStart() );
+		}
+		else {
+			this.addTime( previousNode.getServiceTime() + arcDistance );
+		}
+		
+		// Check starting time
+		if(previousNode.getId() == 0) {
+			this.startTime = this.time - arcDistance;
+		}		
+	}
+
 	/**
 	 * Update the unreachable nodes from the currentNode
 	 * taking into account current reasources
@@ -191,9 +213,8 @@ public class Resources implements Comparable<Resources>{
 			}
 			
 			double timeToReach = this.time + currentNode.getServiceTime() + instance.getDistance(currentNode.getId(), i);
-			double neededDemand = this.demand + instance.getNode(i).getDemand();
 			
-			boolean unreachable = ( instance.getNode(i).getEnd() < timeToReach || instance.getCapacity() < neededDemand );
+			boolean unreachable = ( instance.getNode(i).getEnd() < timeToReach );
 			if ( visitationVector[i] || unreachable ) {
 				unreachableVector[i] = true;
 				nbUnreachableNodes++;
@@ -211,17 +232,16 @@ public class Resources implements Comparable<Resources>{
 	}
 	
 	@Override
-	public int compareTo(Resources that) {
+	public int compareTo(ResourcesRoute that) {
 		
 		double costDiff = this.getCost() - that.getCost();
 		
 		int unreachableDiff = this.getNbUnreachableNodes() - that.getNbUnreachableNodes();
 		
 		double timeDiff = this.time - that.getTime();
-		double demandDiff = this.demand - that.getDemand();
 		
-		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableDiff <= 0);
-		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableDiff >= 0);
+		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && unreachableDiff <= 0);
+		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && unreachableDiff >= 0);
 		
 		if(thisDominance == thatDominance) {
 			return 0;
@@ -241,15 +261,11 @@ public class Resources implements Comparable<Resources>{
 	// ============ GETTERS & SETTERS =================
 	
 	public double getCost() {
-		return cost;
+		return fixedCost;
 	}
 
 	public double getTime() {
 		return time;
-	}
-
-	public double getDemand() {
-		return demand;
 	}
 
 	public int getNbUnreachableNodes() {
@@ -288,8 +304,16 @@ public class Resources implements Comparable<Resources>{
 		return startTime;
 	}
 
+	public double getDualDiff() {
+		return dualDiff;
+	}
+
+	public void addDualDiff(double dualDiff) {
+		this.dualDiff += dualDiff;
+	}
+
 	@Override
 	public String toString() {
-		return "("+cost+", "+time+", "+demand+", "+nbUnreachableNodes+")";
+		return "("+fixedCost+", "+time+", "+nbUnreachableNodes+")";
 	}
 }
