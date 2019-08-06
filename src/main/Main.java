@@ -19,13 +19,13 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 
 		// Default options
-		int nbClients = 10;
+		int nbClients = 25;
 		int useCplex = 0;
 		int timeLimit = 600;
 		int labelLimit = 0;
-		String instanceType = "C101";
+		String instanceType = "All";
 		String directory = "./instances/solomon/";
-		String problem = "iop";
+		String problem = "pricing";
 		boolean writeColumns = false;
 
 		// Reading arguments
@@ -550,7 +550,6 @@ public class Main {
 
 		Label minCostRoute = depotLabels.get(0);
 		for (Label currentLabel : depotLabels) {
-			System.out.println(currentLabel.getRoute());
 			if (currentLabel.getCost() < minCostRoute.getCost()) {
 				minCostRoute = currentLabel;
 			}
@@ -563,7 +562,9 @@ public class Main {
 
 		System.out.println("Generated " + nbFeasibleRoutes + " routes");
 		System.out.println("Algorithm has finished in " + (timeElapsed / 1000000) + " milliseconds");
-
+		System.out.println(""+minCostRoute.getStartingTime());
+		System.out.println(""+minCostRoute.getDuration());
+		
 		// Return
 		return new ESPPRCResult(minCostRoute.getRoute(), minCostRoute.getCost(), timeElapsed / 1000000,
 				minCostRoute.getNbVisitedNodes(), nbFeasibleRoutes, nbGeneratedLabels);

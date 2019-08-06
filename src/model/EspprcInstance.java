@@ -11,55 +11,36 @@ import java.util.Random;
  */
 public class EspprcInstance {
 	
-	/**
-	 * The list of nodes beginning with the origin
-	 */
+	/** The list of nodes beginning with the origin */
 	private Customer[] nodes;
 	
-	/**
-	 * An array with the list of all the successors of the node
-	 * in the respective position
-	 */
+	/** An array with the list of all the successors of the node
+	 * in the respective position */
 	private ArrayList<Customer>[] successors;
 	
-	/**
-	 * The cost to go from node i to node j
-	 */
+	/** The cost to go from node i to node j */
 	private double[][] cost;
 	
-	/**
-	 * The time to go from node i to node j
-	 */
+	/** The time to go from node i to node j */
 	private double[][] distance;
 	
-	/**
-	 * The quantity of vehicles
-	 */
+	/** The quantity of vehicles */
 	private int nbVehicles;
 	
-	/**
-	 * The capacity of the uniform float of vehicles
-	 */
+	/** The capacity of the uniform float of vehicles */
 	private double capacity;
 	
-	/**
-	 * If we duplicate de origin node
-	 */
+	/** If we duplicate de origin node */
 	private boolean duplicateOrigin;
 	
-	/**
-	 * To identify the instance
-	 */
+	/** To identify the instance */
 	private String name;
 
-	/**
-	 * Default constructor
-	 */
+	/** Default constructor */
 	public EspprcInstance() {
 	}
 	
-	/**
-	 * Constructor by copy
+	/** Constructor by copy
 	 * @param instance
 	 */
 	public EspprcInstance(EspprcInstance instance) {
@@ -134,17 +115,18 @@ public class EspprcInstance {
 		this.cost = new double[nbNodes][nbNodes];
 		this.distance = new double[nbNodes][nbNodes];
 		for(int i=0; i < nbNodes; i++) {
+			int randomInt = rand.nextInt(max - min + 1) + min;
+			this.getNode(i).setDemand(0);
+
 			for(int j=0; j < nbNodes; j++) {
 				if( i != j ) {
 					double euclidianDistance = this.getNodes()[i].distance(this.getNodes()[j]);
 					// Truncate
 					euclidianDistance =  Math.floor(euclidianDistance * 10) / 10;
-					
-					int randomInt = rand.nextInt(max - min + 1) + min;
-					
+										
 					if( !simulate || i == 0) { randomInt = 0; }
 
-					this.cost[i][j] = ( euclidianDistance * costFactor) - randomInt;
+					this.cost[j][i] = ( euclidianDistance * costFactor) - randomInt;
 					this.distance[i][j] = euclidianDistance * timeFactor;
 				}
 			}
