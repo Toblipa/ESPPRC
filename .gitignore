@@ -67,3 +67,5 @@ nb-configuration.xml
 *.lp
 *.csv
 results_*
+columns-*
+dualValues-*
