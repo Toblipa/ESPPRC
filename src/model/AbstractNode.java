@@ -32,7 +32,21 @@ public abstract class AbstractNode {
         this.y = y;
     }
     
-    public abstract double distance(AbstractNode p);
+	/**
+     * Calcul de la distance euclidienne entre deux points (this et p).
+     * @param p le point avec lequel on cherche la distance
+     * @return la distance euclidienne entre les points, infini si p est null.
+     */
+    public double distance (AbstractNode p) {
+        if(p==null) {
+            return Double.MAX_VALUE;
+        }
+        double dx = this.getX() - p.getX();
+        double dy = this.getY() - p.getY();
+        return Math.sqrt(dx*dx + dy*dy);
+    }
+    
+//    public abstract double distance(AbstractNode p);
     
     /**
      * @return l'abscisse du point

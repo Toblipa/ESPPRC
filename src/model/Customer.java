@@ -103,20 +103,6 @@ public class Customer extends AbstractNode implements Comparable<Customer>{
 		this.isDepot = isDepot;
 	}
 
-	/**
-     * Calcul de la distance euclidienne entre deux points (this et p).
-     * @param p le point avec lequel on cherche la distance
-     * @return la distance euclidienne entre les points, infini si p est null.
-     */
-	@Override
-    public double distance (AbstractNode p) {
-        if(p==null) {
-            return Double.MAX_VALUE;
-        }
-        double dx = this.getX() - p.getX();
-        double dy = this.getY() - p.getY();
-        return Math.sqrt(dx*dx + dy*dy);
-    }
 
 	@Override
 	public int compareTo(Customer that) {

@@ -28,6 +28,27 @@ public class EspprcSolver {
 	}
 	
 	/**
+	 * Class to stock the result found by Cplex
+	 */
+	public class Route {
+		String path;
+		int nbVisitedNodes;
+		
+		public Route(String path, int nbVisitedNodes) {
+			this.path = path;
+			this.nbVisitedNodes = nbVisitedNodes;
+		}
+		
+		public String getPath() {
+			return this.path;
+		}
+		
+		public int getNbVisitedNodes() {
+			return this.nbVisitedNodes;
+		}
+	}
+	
+	/**
 	 * Cplex linear model to solve an ESPPRC
 	 * 
 	 * @return
@@ -38,7 +59,7 @@ public class EspprcSolver {
 			cplex.setParam(IloCplex.DoubleParam.TiLim, timeLimit);
 			
 			// Decision variables
-			IloNumVar[][] x = new IloNumVar[this.instance.getNodes().length][this.instance.getNodes().length];
+			IloNumVar[][] x = new IloNumVar[instance.getNbNodes()][instance.getNbNodes()];
 
 			for(int i=0; i < x.length; i++) {
 				for(int j=0; j < x[i].length; j++) {
@@ -47,9 +68,9 @@ public class EspprcSolver {
 			}
 			
 			// The time s_i where customer i is served
-			IloNumVar[] s = new IloNumVar[instance.getNodes().length];
+			IloNumVar[] s = new IloNumVar[instance.getNbNodes()];
 			for(int i=0; i < s.length; i++) {
-				Customer currentNode = this.instance.getNodes()[i];
+				Customer currentNode = instance.getNode(i);
 				s[i] = cplex.numVar(currentNode.getStart(), currentNode.getEnd(), "s_"+i);
 			}
 			
@@ -65,7 +86,6 @@ public class EspprcSolver {
 
 			this.addTimeWindowsConstraints(cplex, x, s);
 
-			// Export the model into a file
 			cplex.exportModel("ESPPRCModel.lp");
 
 			// Solve
@@ -78,7 +98,8 @@ public class EspprcSolver {
 			long timeElapsed = endTime - startTime;
 
 			// Display results
-			Route route = this.displayRoutesResult(cplex, x);
+//			this.displayMatrixResult(cplex, x);
+			Route route = this.getRouteResult(cplex, x);
 			
 			return new ESPPRCResult(route.getPath(), cplex.getObjValue(), timeElapsed/1000000, route.getNbVisitedNodes());
 			
@@ -97,17 +118,17 @@ public class EspprcSolver {
 	 * @throws UnknownObjectException
 	 * @throws IloException
 	 */
-	private Route displayRoutesResult(IloCplex cplex, IloNumVar[][] x) throws UnknownObjectException, IloException {		
+	private Route getRouteResult(IloCplex cplex, IloNumVar[][] x) throws UnknownObjectException, IloException {		
 		String out = "";
     	
 		int currentNode = 0;
     	int nbVisitedNodes = 0;
     	
 		boolean finished = false;
+		
     	while ( !finished ) {
     		for(int i = 1; i < x[currentNode].length; i++) {
     			if( cplex.getValue(x[currentNode][i]) > 0 ) {
-    				
     				if(i == x[currentNode].length - 1) {
     					finished = true;
 //    					out += "Depot";
@@ -117,6 +138,7 @@ public class EspprcSolver {
     				nbVisitedNodes++;
     				out += i + ", ";
     				currentNode = i;
+    				break;
     			}
     			
     			if(i == x[currentNode].length - 1) {
@@ -126,24 +148,6 @@ public class EspprcSolver {
     	}
     	
     	return new Route(out, nbVisitedNodes);
-	}
-	
-	public class Route {
-		String path;
-		int nbVisitedNodes;
-		
-		public Route(String path, int nbVisitedNodes) {
-			this.path = path;
-			this.nbVisitedNodes = nbVisitedNodes;
-		}
-		
-		public String getPath() {
-			return this.path;
-		}
-		
-		public int getNbVisitedNodes() {
-			return this.nbVisitedNodes;
-		}
 	}
 	
 	/**
@@ -184,11 +188,11 @@ public class EspprcSolver {
 	 */
 	private void addTimeWindowsConstraints(IloCplex cplex, IloNumVar[][] x, IloNumVar[] s) throws IloException {
 		// A large number
-		double M = 1000;
+		double M = instance.getNode(0).getEnd();
 
 		// Time windows when visiting from node i to node j
-		for(int i=0; i < s.length; i++) {
-			Customer currentNode = this.instance.getNodes()[i];
+		for(int i=0; i < s.length-1; i++) {
+			Customer currentNode = instance.getNode(i);
 
 			for(int j=1; j < s.length; j++) {
 				IloLinearNumExpr expression = cplex.linearNumExpr();
@@ -196,8 +200,9 @@ public class EspprcSolver {
 				expression.addTerm(1.0, s[i]);
 				expression.addTerm(-1.0, s[j]);
 				expression.addTerm(M, x[i][j]);
-
-				cplex.addLe(expression, M - currentNode.getServiceTime() - this.instance.getDistanceMatrix()[i][j]);	
+				if(i != j) {
+					cplex.addLe(expression, M - currentNode.getServiceTime() - instance.getDistance(i, j));
+				}
 			}
 		}
 	}
@@ -274,11 +279,13 @@ public class EspprcSolver {
 
 		for(int i = 1; i < x.length; i++) {
 			for(int j = 1; j < x[i].length; j++) {
-				expression.addTerm(this.instance.getNodes()[i].getDemand(), x[i][j]);
+				if(i!=j) {
+					expression.addTerm(instance.getNode(i).getDemand(), x[i][j]);
+				}
 			}
 		}
 
-		cplex.addLe(expression, this.instance.getCapacity());
+		cplex.addLe(expression, instance.getCapacity());
 
 	}
 
@@ -298,7 +305,7 @@ public class EspprcSolver {
 			expr.addTerm(x[i], 1.0);
 		}
 
-		cplex.addLe(expr, this.instance.getVehicles());
+		cplex.addLe(expr, instance.getVehicles());
 
 	}
 	
@@ -310,15 +317,14 @@ public class EspprcSolver {
 	 */
 	private void addESPPRCObjective(IloCplex cplex, IloNumVar[][] x) throws IloException {
 		IloLinearNumExpr obj = cplex.linearNumExpr();
-
-		for(int i=0; i < x.length; i++) {
+		
+		for(int i=0; i < x.length-1; i++) {
 			for(int j=0; j < x[i].length; j++) {
 				if(i != j) {
-					obj.addTerm(x[i][j], this.instance.getCostMatrix()[i][j]);
+					obj.addTerm( x[i][j], instance.getCost(i, j) );
 				}
 			}
 		}
-
 
 		cplex.addMinimize(obj);
 	}

@@ -96,14 +96,14 @@ public class EspprcInstance {
 	// ===== PREPROCESSING NODES =====
 	
 	/**
-	 * To stock the edge costs and distance in a matrix
-	 * It ramdomly generates negative costs for the edges if simulate is active
+	 * To stock edge costs and distance in a matrix
+	 * It ramdomly generates negative costs for the edges if simulate is True
 	 *
 	 * @param simulate Set to "true" to randomly add negative costs to the edges
 	 */
 	public void buildEdges(boolean simulate) {
 		// For simulation purposes
-		int max = 20;
+		int max = 50;
 		int min = 0;
 		Random rand = new Random(0);
 
@@ -116,7 +116,6 @@ public class EspprcInstance {
 		this.distance = new double[nbNodes][nbNodes];
 		for(int i=0; i < nbNodes; i++) {
 			int randomInt = rand.nextInt(max - min + 1) + min;
-			this.getNode(i).setDemand(0);
 
 			for(int j=0; j < nbNodes; j++) {
 				if( i != j ) {
@@ -124,9 +123,9 @@ public class EspprcInstance {
 					// Truncate
 					euclidianDistance =  Math.floor(euclidianDistance * 10) / 10;
 										
-					if( !simulate || i == 0) { randomInt = 0; }
+					if( !simulate || i == 0 || i == (nbNodes-1)) { randomInt = 0; }
 
-					this.cost[j][i] = ( euclidianDistance * costFactor) - randomInt;
+					this.cost[j][i] = ( euclidianDistance * costFactor ) - randomInt;
 					this.distance[i][j] = euclidianDistance * timeFactor;
 				}
 			}
@@ -139,7 +138,7 @@ public class EspprcInstance {
 	}
 	
 	/**
-	 * To see which edges are allowed or forbidden
+	 * To see which edges are feasible considering node time windows
 	 */
 	@SuppressWarnings("unchecked")
 	public void buildSuccessors() {
@@ -248,6 +247,15 @@ public class EspprcInstance {
 		for( int i = 0; i < cost.length; i++ ) {
 			for( int j= 0; j < cost[i].length; j++ ) {
 				System.out.print( Math.floor(cost[i][j]*10)/10+" ");
+			}
+			System.out.println("");
+		}
+	}
+	
+	public void printDistanceMatrix() {
+		for( int i = 0; i < distance.length; i++ ) {
+			for( int j= 0; j < distance[i].length; j++ ) {
+				System.out.print( distance[i][j]+" ");
 			}
 			System.out.println("");
 		}

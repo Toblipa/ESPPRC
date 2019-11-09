@@ -138,11 +138,6 @@ public class Label implements Comparable<Label>{
 		if (previousLabel == null) return 0;
 		
 		return resources.getTime() - resources.getStartTime();
-		
-//		int curNode = current.getId();
-//		int prevNode = previousLabel.getCurrent().getId();
-//
-//		return previousLabel.getRouteDistance(instance) + instance.getDistance(prevNode, curNode);
 	}
 	
 	public double getRouteDistance(EspprcInstance instance) {
@@ -158,12 +153,6 @@ public class Label implements Comparable<Label>{
 	
 	public double getStartingTime() {
 		return resources.getStartTime();
-//		int curNode = current.getId();
-//		int prevNode = previousLabel.getCurrent().getId();
-//		if(prevNode == 0) {
-//			return this.getResources().getTime() - instance.getDistance(prevNode, curNode);
-//		}
-//		return previousLabel.getStartingTime(instance);
 	}
 	
 	public double getVisitTime(int nodeId) {

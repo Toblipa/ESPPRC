@@ -100,8 +100,8 @@ public class Resources implements Comparable<Resources>{
 		
 		if( this.cost > resources.getCost() ||
 			this.nbUnreachableNodes > resources.getNbUnreachableNodes() || 
-			this.time > resources.getTime() )/*|| 
-			this.demand > resources.getDemand() )*/
+			this.time > resources.getTime() || 
+			this.demand > resources.getDemand() )
 		{
 			return false;
 		}
@@ -125,7 +125,7 @@ public class Resources implements Comparable<Resources>{
 	 * @return
 	 */
 	public void extendResources(EspprcInstance instance, Customer previousNode, Customer currentNode) {
-		double arcCost = instance.getCost(previousNode.getId(), currentNode.getId());
+		double arcCost = instance.getCost( previousNode.getId(), currentNode.getId() );
 		double arcDistance = instance.getDistance( previousNode.getId(), currentNode.getId() );
 		
 		// We add the time of the label, considering we cannot visit the customer before the start time
@@ -143,11 +143,6 @@ public class Resources implements Comparable<Resources>{
 		
 		// We add the cost
 		this.addCost( arcCost );
-		
-		// If origin then reset demand consumption
-		if( previousNode.getId() == 0 ) {
-			this.demand = 0;
-		}
 		
 		// Add demand resource
 		this.addDemand( currentNode.getDemand() );
