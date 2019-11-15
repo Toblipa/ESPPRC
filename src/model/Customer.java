@@ -1,21 +1,48 @@
 
 package model;
 
-public class Customer extends AbstractNode {
+public class Customer extends AbstractNode implements Comparable<Customer>{
     
+	/**
+	 * The given node id
+	 */
     private int id;
     
+    /**
+     * The required demand on this node
+     */
     private int demand;
     
+    /**
+     * Time needed to produce the required product of the client
+     */
+    private double productionTime;
+    
+    /**
+     * The start time of the time window
+     */
     private double start;
     
+    /**
+     * The end time of the time window
+     */
     private double end;
     
+    /**
+     * The service time required on this node
+     */
     private double serviceTime;
     
-	// To know if it is the depot
+	/**
+	 * Flag to check if it is the last node
+	 */
 	private boolean isDepot = false;
 	
+	/**
+	 * 
+	 * @param x
+	 * @param y
+	 */
 	public Customer(double x, double y) {
 		super(x, y);
 	}
@@ -60,8 +87,15 @@ public class Customer extends AbstractNode {
 		this.serviceTime = serviceTime;
 	}
 
-	
-    public boolean isDepot() {
+	public double getProductionTime() {
+		return productionTime;
+	}
+
+	public void setProductionTime(double productionTime) {
+		this.productionTime = productionTime;
+	}
+
+	public boolean isDepot() {
 		return isDepot;
 	}
 
@@ -69,18 +103,13 @@ public class Customer extends AbstractNode {
 		this.isDepot = isDepot;
 	}
 
-	/**
-     * Calcul de la distance euclidienne entre deux points (this et p).
-     * @param p le point avec lequel on cherche la distance
-     * @return la distance euclidienne entre les points, infini si p est null.
-     */
+
 	@Override
-    public double distance (AbstractNode p) {
-        if(p==null) {
-            return Double.MAX_VALUE;
-        }
-        double dx = this.getX() - p.getX();
-        double dy = this.getY() - p.getY();
-        return Math.sqrt(dx*dx + dy*dy);
-    }
+	public int compareTo(Customer that) {
+		if ( isDepot ) { return 1; }
+		if ( that.isDepot() ) { return -1; }
+		
+		double comparison = this.start - that.getStart();
+		return (int) Math.signum(comparison);
+	}
 }

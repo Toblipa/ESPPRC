@@ -9,24 +9,41 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class SolomonReader {
+	
+	/**
+	 * The instance to stock file data
+	 */
 	private EspprcInstance instance;
+	
+	/**
+	 * The name of the file for reading
+	 */
 	private String file;
-
+	
+	/**
+	 * 
+	 * @param instance
+	 * @param file
+	 */
 	public SolomonReader(EspprcInstance instance, String file){
 		this.instance = instance;
 		this.file = file;
 	}
-
-	public void read() {
+	
+	/**
+	 * 
+	 * @param nbClients
+	 */
+	public void read(int nbClients) {
 		try {
 			FileReader reader = new FileReader(this.file);
 			BufferedReader br = new BufferedReader(reader);
 
 			int counter = 0;
 			String line;
-			while ((line = br.readLine()) != null) {
+			while ((line = br.readLine()) != null && counter < nbClients+10) {
 				counter++;
-				this.readInstace(line, counter);
+				this.readInstace(line, counter, nbClients);
 			}
 
 			br.close();
@@ -38,7 +55,12 @@ public class SolomonReader {
 		}
 	}
 
-	private void readInstace(String line, int counter) {
+	/**
+	 * 
+	 * @param line
+	 * @param counter
+	 */
+	private void readInstace(String line, int counter, int nbClients) {
 
 		line = line.replace("\r", "");
 		line = line.trim();
@@ -49,24 +71,7 @@ public class SolomonReader {
 		}
 		else if (counter == 10) {
 			// origin node
-			if(this.file.contains("_100")){
-				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 102:101]);
-			}
-			else if(this.file.contains("_50")) {
-				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 52:51]);
-			}
-			else if(this.file.contains("_25")) {
-				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 27:26]);
-			}
-			else if(this.file.contains("_15")) {
-				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 17:16]);
-			}
-			else if(this.file.contains("_10")) {
-				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 12:11]);
-			}
-			else if(this.file.contains("_5")){
-				this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? 7:6]);
-			}
+			this.instance.setNodes(new Customer[this.instance.isDuplicateOrigin() ? nbClients+2 : nbClients+1]);
 			
 			this.readOrigin(tokens);
 		}
@@ -76,6 +81,10 @@ public class SolomonReader {
 		}
 	}
 	
+	/**
+	 * 
+	 * @param tokens
+	 */
 	private void readOrigin(String[] tokens) {
 		// The origin node
 		this.readCustomer(tokens);
@@ -99,6 +108,10 @@ public class SolomonReader {
 		
 	}
 	
+	/**
+	 * 
+	 * @param tokens
+	 */
 	private void readCustomer(String[] tokens) {
 		Customer customer = new Customer( Double.parseDouble(tokens[1]), Double.parseDouble(tokens[2]) );
 		
@@ -112,23 +125,130 @@ public class SolomonReader {
 		this.instance.getNodes()[customer.getId()] = customer;
 	}
 
+	/**
+	 * 
+	 * @param tokens
+	 */
 	private void readVehicle(String[] tokens) {
 		this.instance.setVehicles( Integer.parseInt(tokens[0]) );
 		this.instance.setCapacity( Double.parseDouble(tokens[1]) );
 	}
+	
+	/**
+	 * 
+	 * @return list of C instances
+	 */
+	public static String[] getCInstances() {
+		String[] instances = new String[9];
 
+		instances[0] = "C101.txt";
+		instances[1] = "C102.txt";
+		instances[2] = "C103.txt";
+		instances[3] = "C104.txt";
+		instances[4] = "C105.txt";
+		instances[5] = "C106.txt";
+		instances[6] = "C107.txt";
+		instances[7] = "C108.txt";
+		instances[8] = "C109.txt";
+
+		return instances;
+	}
+	
+	/**
+	 * 
+	 * @return list of R instances
+	 */
+	public static String[] getRInstances() {
+		String[] instances = new String[12];
+
+		instances[0] = "R101.txt";
+		instances[1] = "R102.txt";
+		instances[2] = "R103.txt";
+		instances[3] = "R104.txt";
+		instances[4] = "R105.txt";
+		instances[5] = "R106.txt";
+		instances[6] = "R107.txt";
+		instances[7] = "R108.txt";
+		instances[8] = "R109.txt";
+		instances[9] = "R110.txt";
+		instances[10] = "R111.txt";
+		instances[11] = "R112.txt";
+
+		return instances;
+	}
+	
+	/**
+	 * 
+	 * @return list of RC instances
+	 */
+	public static String[] getRCInstances() {
+		String[] instances = new String[8];
+
+		instances[0] = "RC101.txt";
+		instances[1] = "RC102.txt";
+		instances[2] = "RC103.txt";
+		instances[3] = "RC104.txt";
+		instances[4] = "RC105.txt";
+		instances[5] = "RC106.txt";
+		instances[6] = "RC107.txt";
+		instances[7] = "RC108.txt";
+
+		return instances;
+	}
+	
+	/**
+	 * 
+	 * @return list of R, C and RC instances in that order
+	 */
+	public static String[] getAllInstances() {
+		String[] instances = new String[29];
+
+		System.arraycopy(getRInstances(), 0, instances, 0, 12);
+		System.arraycopy(getCInstances(), 0, instances, 12, 9);
+		System.arraycopy(getRCInstances(), 0, instances, 21, 8);
+
+		return instances;
+	}
+	
+	/**
+	 * 
+	 * @param instanceType
+	 * @return
+	 */
+	public static String[] getInstace(String instanceType) {
+		String[] instances = new String[1];
+		instances[0] = instanceType + ".txt";
+		return instances;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
 	public EspprcInstance getInstance() {
 		return instance;
 	}
-
+	
+	/**
+	 * 
+	 * @param instance
+	 */
 	public void setInstance(EspprcInstance instance) {
 		this.instance = instance;
 	}
-
+	
+	/**
+	 * 
+	 * @return
+	 */
 	public String getFile() {
 		return file;
 	}
 
+	/**
+	 * 
+	 * @param file
+	 */
 	public void setFile(String file) {
 		this.file = file;
 	}

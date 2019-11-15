@@ -1,14 +1,33 @@
 package model;
 
-public class Resources {
+public class Resources implements Comparable<Resources>{
+	
 	private double cost;
 
 	private double time;
-
+	
 	private double demand;
+	
+	private double startTime;
+	
+	/**
+	 * Number of visited nodes
+	 */
+	private int nbVisitedNodes;
+	
+	/**
+	 * Nodes visited from the origin the current node
+	 */
+	private boolean[] visitationVector;
 
+	/**
+	 * Number of unreachable nodes
+	 */
 	private int nbUnreachableNodes;
-
+	
+	/**
+	 * Vector showing which nodes are unreachable (true) and those who are not (false)
+	 */
 	private boolean[] unreachableVector;
 
 	/**
@@ -16,49 +35,74 @@ public class Resources {
 	 * @param instance
 	 */
 	public Resources(EspprcInstance instance) {
-		nbUnreachableNodes = 0;
 		unreachableVector = new boolean[instance.getNbNodes()];
+		unreachableVector[0] = instance.isDuplicateOrigin();
+		nbUnreachableNodes = 1;
+		
+		visitationVector = new boolean[instance.getNbNodes()];
+		visitationVector[0] = instance.isDuplicateOrigin();
+		nbVisitedNodes = 1;
 	}
+	
 	/**
-	 * Creates a copy of the given resources
+	 * Create a copy of the given resources
 	 * @param resources
 	 */
 	public Resources(Resources resources) {
 		cost = resources.getCost();
 		time = resources.getTime();
 		demand = resources.getDemand();
+		startTime = resources.getStartTime();
+		nbVisitedNodes = resources.getNbVisitedNodes();
 		nbUnreachableNodes = resources.getNbUnreachableNodes();
-		unreachableVector = resources.getUnreachableVector();
-//		unreachableVector = new boolean[ resources.getUnreachableVector().length ];
+		visitationVector = resources.getVisitationVector().clone();
+		unreachableVector = new boolean[visitationVector.length];
 	}
-
+	
+	/**
+	 * Add the given amount to the cost resource
+	 * @param amount
+	 */
 	public void addCost(double amount){
 		cost += amount;
 	}
-
+	
+	/**
+	 * Add the given amount to the demand resource
+	 * @param amount
+	 */
 	public void addDemand(double amount) {
 		demand += amount;
 	}
 	
+	/**
+	 * Add the given amount to the time resource
+	 * @param amount
+	 */
 	public void addTime(double amount) {
 		time += amount;		
 	}
 	
+	/**
+	 * Set the time resource
+	 * @param time
+	 */
 	public void setTime(double time) {
 		this.time = time;		
 	}
-
-	public boolean lesserThan(Resources resources) {
-		// Check cost & number of unreachable nodes
-		if(this.cost > resources.getCost() || this.nbUnreachableNodes > resources.getNbUnreachableNodes()) {
-			return false;
-		}
-
-		// Check resources
-		if( this.time > resources.getTime() ) {
-			return false;
-		}			
-		if( this.demand > resources.getDemand() ) {
+	
+	/**
+	 * If each resource is less than a the given Resources object
+	 * @param resources
+	 * @return
+	 */
+	public boolean lessThan(Resources resources) {
+		
+		if( this.cost > resources.getCost() ||
+			this.nbUnreachableNodes > resources.getNbUnreachableNodes() || 
+			this.time > resources.getTime() || 
+			this.demand > resources.getDemand() )
+		{
 			return false;
 		}
 
@@ -73,59 +117,111 @@ public class Resources {
 		return true;
 	}
 	
-	public Resources extendResources(EspprcInstance instance, Customer previousNode, Customer currentNode) {
-		double arcCost = instance.getCost()[previousNode.getId()][currentNode.getId()];
-		double arcDistance = instance.getDistance()[previousNode.getId()][currentNode.getId()];
-		
-		Resources extendedResources = new Resources(this);
-		
-		// We add the cost
-		extendedResources.addCost( arcCost );
+	/**
+	 * Extend the resources from the previousNode to the currentNode
+	 * @param instance
+	 * @param previousNode
+	 * @param currentNode
+	 * @return
+	 */
+	public void extendResources(EspprcInstance instance, Customer previousNode, Customer currentNode) {
+		double arcCost = instance.getCost( previousNode.getId(), currentNode.getId() );
+		double arcDistance = instance.getDistance( previousNode.getId(), currentNode.getId() );
 		
 		// We add the time of the label, considering we cannot visit the customer before the start time
 		if( currentNode.getStart() > this.time + previousNode.getServiceTime() + arcDistance ) {
-			extendedResources.setTime( currentNode.getStart() );
+			this.setTime( currentNode.getStart() );
 		}
 		else {
-			extendedResources.addTime( previousNode.getServiceTime() + arcDistance );
+			this.addTime( previousNode.getServiceTime() + arcDistance );
 		}
 		
+		// Check starting time
+		if(previousNode.getId() == 0) {
+			this.startTime = this.time - arcDistance;
+		}
+		
+		// We add the cost
+		this.addCost( arcCost );
+		
 		// Add demand resource
-		extendedResources.addDemand( currentNode.getDemand() );
+		this.addDemand( currentNode.getDemand() );
+		
+		// Update visited nodes
+		if(currentNode.getId() != 0) {
+			this.updateVisitationVector(currentNode);
+		}
 		
 		// Update unreachable nodes
-		extendedResources.updateUnreachableNodes(instance, currentNode);
-		
-		return extendedResources;
+		this.updateUnreachableNodes(instance, currentNode);		
 	}
 	
+	/**
+	 * Update the unreachable nodes from the currentNode
+	 * taking into account current reasources
+	 * @param instance
+	 * @param currentNode
+	 */
 	public void updateUnreachableNodes(EspprcInstance instance, Customer currentNode) {
 		// We update unreachable nodes
-		this.nbUnreachableNodes = 0;
-		for(int i = 0; i < instance.getNodes().length; i++ ) {
-			if( currentNode.isDepot() || i == currentNode.getId()) {
-				this.unreachableVector[i] = true;
-				this.nbUnreachableNodes++;
+		nbUnreachableNodes = 0;
+		for(int i = 0; i < instance.getNbNodes(); i++) {
+			if( currentNode.isDepot() ) {
+				unreachableVector[i] = true;
+				nbUnreachableNodes++;
 				continue;
 			}
 			
-			double timeToReach = this.time + currentNode.getServiceTime() + instance.getDistance()[currentNode.getId()][i];
-			if ( this.unreachableVector[i] ||
-					( instance.getNode(i).getEnd() < timeToReach ||
-							instance.getCapacity() < this.getTime() + instance.getNode(i).getDemand()) ) {
-				this.unreachableVector[i] = true;
-				this.nbUnreachableNodes++;
+			double timeToReach = this.time + currentNode.getServiceTime() + instance.getDistance(currentNode.getId(), i);
+			double neededDemand = this.demand + instance.getNode(i).getDemand();
+			
+			boolean unreachable = ( instance.getNode(i).getEnd() < timeToReach || instance.getCapacity() < neededDemand );
+			if ( visitationVector[i] || unreachable ) {
+				unreachableVector[i] = true;
+				nbUnreachableNodes++;
+			}
+		}
+	}
+	
+	/**
+	 * Extend visitation vector to given node
+	 * @param currentNode
+	 */
+	private void updateVisitationVector(Customer currentNode) {
+		visitationVector[currentNode.getId()] = true;
+		nbVisitedNodes++;
+	}
+	
+	@Override
+	public int compareTo(Resources that) {
+		
+		double costDiff = this.getCost() - that.getCost();
+		
+		int unreachableDiff = this.getNbUnreachableNodes() - that.getNbUnreachableNodes();
+		
+		double timeDiff = this.time - that.getTime();
+		double demandDiff = this.demand - that.getDemand();
+		
+		boolean thisDominance = (costDiff <= 0 && timeDiff <= 0 && demandDiff <= 0 && unreachableDiff <= 0);
+		boolean thatDominance = (costDiff >= 0 && timeDiff >= 0 && demandDiff >= 0 && unreachableDiff >= 0);
+		
+		if(thisDominance == thatDominance) {
+			return 0;
+		}
+		
+		boolean[] thatUnreachableVector = that.getUnreachableVector();
+		for(int k = 0; k < this.unreachableVector.length; k++) {
+			if( (thisDominance && this.unreachableVector[k] && !thatUnreachableVector[k]) || 
+				(thatDominance && !this.unreachableVector[k] && thatUnreachableVector[k])	) {
+				return 0;
 			}
 		}
 		
-//		extendedLabel.setUnreachableNodes( extendedUnreachableNodes );
-//		extendedLabel.setNbUnreachableNodes( extendedNbUnreachableNodes );
-		
+		return (int) Math.signum(costDiff);
 	}
-	public void updateResources(double cost, double distance) {
-		
-	}
-
+	
+	// ============ GETTERS & SETTERS =================
+	
 	public double getCost() {
 		return cost;
 	}
@@ -144,5 +240,38 @@ public class Resources {
 
 	public boolean[] getUnreachableVector() {
 		return unreachableVector;
+	}
+	
+	public boolean isReachable(int id) {
+		return !unreachableVector[id];
+	}
+	
+	public boolean[] getVisitationVector() {
+		return visitationVector;
+	}
+	
+	public boolean isVisited(int id) {
+		return visitationVector[id];
+	}
+
+	public void setVisitationVector(boolean[] visitationVector) {
+		this.visitationVector = visitationVector;
+	}
+
+	public int getNbVisitedNodes() {
+		return nbVisitedNodes;
+	}
+
+	public void setNbVisitedNodes(int nbVisitedNodes) {
+		this.nbVisitedNodes = nbVisitedNodes;
+	}
+
+	public double getStartTime() {
+		return startTime;
+	}
+
+	@Override
+	public String toString() {
+		return "("+cost+", "+time+", "+demand+", "+nbUnreachableNodes+")";
 	}
 }
