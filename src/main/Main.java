@@ -10,13 +10,13 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 
 		// Default options
-		int nbCustomers = 25;
+		int nbCustomers = 10;
 		int useCplex = 1;
 		int timeLimit = 300;
 		int labelLimit = 0;
-		String instanceType = "All";
+		String instanceType = "R";
 		String directory = "./instances/solomon/";
-		String problem = "pricing";
+		String problem = "master";
 		boolean writeColumns = true;
 
 		// Reading arguments
