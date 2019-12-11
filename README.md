@@ -5,5 +5,14 @@ The algorithm corresponds to the one proposed in the paper written by D. Feillet
 
 A CPLEX licence is needed to run the Master Problem and the Pricing problem comparison. The pricing problem having set the "cplex" option to 0 may work without a CPLEX licence.
 
+## Options
+- -d
+- -instance
+- -customers
+- -useCplex
+- -timeLimit
+- -labelLimit
+- -problem
+
 # Bibliography
 [1] Dominique Feillet, Pierre DEJAX, Michel Gendreau, and Cyrille Gueguen. An exact algorithm for the elementary shortest path problem with resource constraints: Application to some vehicle routing problems. Networks, 44:216–229, 10 2004.
